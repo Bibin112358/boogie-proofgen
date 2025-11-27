@@ -31,10 +31,11 @@ namespace Core
   /// </summary>
   class MaxHolesLambdaLifter : StandardVisitor
   {
+    private CoreOptions options;
     private readonly List<Variable> _nestedBoundVariables = new List<Variable>();
 
     private readonly LambdaExpr _lambda;
-    private readonly Dictionary<Expr, FunctionCall> _liftedLambdas;
+    private readonly LiftedLambdas _liftedLambdas;
     private readonly String _freshFnName;
     private readonly List<Function> _lambdaFunctions;
     private readonly List<Axiom> _lambdaAxioms;
@@ -44,11 +45,10 @@ namespace Core
 
     public MaxHolesLambdaLifter(
       LambdaExpr lambda,
-      Dictionary<Expr, FunctionCall> liftedLambdas,
+      LiftedLambdas liftedLambdas,
       string freshFnName,
       List<Function> lambdaFunctions,
-      List<Axiom> lambdaAxioms,
-      int freshVarCount = 0
+      List<Axiom> lambdaAxioms, CoreOptions options, int freshVarCount = 0
     )
     {
       _lambda = lambda;
@@ -56,6 +56,7 @@ namespace Core
       _freshFnName = freshFnName;
       _lambdaFunctions = lambdaFunctions;
       _lambdaAxioms = lambdaAxioms;
+      this.options = options;
       _freshVarCount = freshVarCount;
     }
 
@@ -346,7 +347,7 @@ namespace Core
 
 
       var lambdaAttrs = _lambda.Attributes;
-      if (0 < CommandLineOptions.Clo.VerifySnapshots && QKeyValue.FindStringAttribute(lambdaAttrs, "checksum") == null)
+      if (0 < options.VerifySnapshots && QKeyValue.FindStringAttribute(lambdaAttrs, "checksum") == null)
       {
         // Attach a dummy checksum to avoid issues in the dependency analysis.
         var checksumAttr = new QKeyValue(_lambda.tok, "checksum", new List<object> {"lambda expression"}, null);
@@ -367,13 +368,13 @@ namespace Core
       var freeVarActuals = freeVars.OfType<Type>().ToList();
 
       var sw = new StringWriter();
-      var wr = new TokenTextWriter(sw, true);
+      var wr = new TokenTextWriter(sw, true, options);
       _lambda.Emit(wr);
       string lam_str = sw.ToString();
 
       // the resulting lifted function applied to free variables
       IToken tok = _lambda.tok;
-      Formal res = new Formal(tok, new TypedIdent(tok, TypedIdent.NoName, cce.NonNull(_lambda.Type)), false);
+      Formal res = new Formal(tok, new TypedIdent(tok, TypedIdent.NoName, Cce.NonNull(_lambda.Type)), false);
 
       var liftedLambda = (LambdaExpr) LambdaLiftingMaxHolesFiller.Fill(
         (from kvp in _templates where !kvp.Value.ContainsBoundVariables() select kvp.Key).ToList(),
@@ -381,16 +382,16 @@ namespace Core
 
       if (_liftedLambdas.TryGetValue(liftedLambda, out var fcall))
       {
-        if (CommandLineOptions.Clo.TraceVerify)
+        if (options.TraceVerify)
         {
-          Console.WriteLine("Old lambda: {0}", lam_str);
+          options.OutputWriter.WriteLine("Old lambda: {0}", lam_str);
         }
       }
       else
       {
-        if (CommandLineOptions.Clo.TraceVerify)
+        if (options.TraceVerify)
         {
-          Console.WriteLine("New lambda: {0}", lam_str);
+          options.OutputWriter.WriteLine("New lambda: {0}", lam_str);
         }
 
         var freshTypeVars = (from tv in freeTypeVars select new TypeVariable(tv.tok, tv.Name)).ToList();
@@ -489,7 +490,7 @@ namespace Core
       else
       {
         // After OldFinder pass, old expressions should only occur around free variables
-        throw new cce.UnreachableException();
+        throw new Cce.UnreachableException();
       }
 
       return node;

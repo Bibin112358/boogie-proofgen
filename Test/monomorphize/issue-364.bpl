@@ -1,18 +1,16 @@
-// RUN: %parallel-boogie /monomorphize "%s" > "%t"
+// RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // test for use of type synonyms
 
-type {:datatype} Cell _;
-function {:constructor} Cell<T>(x: T): Cell T;
+datatype Foo<T> { Foo(x: T) }
 
-function foo<T>(): Cell T;
+function foo<T>(): Foo T;
 
-type {:datatype} Some;
-function {:constructor} Some(x: int): Some;
+datatype Some { Some(x: int) }
 
 type MyT = Some;
 
 procedure p() {
-    var c1: Cell MyT;
-    var c2: Cell Some;
+    var c1: Foo MyT;
+    var c2: Foo Some;
 }

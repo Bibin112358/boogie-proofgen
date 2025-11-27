@@ -7,11 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="System.Reactive" Version="4.4.1" />
     <PackageReference Include="System.Runtime.Caching" Version="6.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AbsInt\AbsInt.csproj" />
+    <ProjectReference Include="..\AbstractInterpretation\AbstractInterpretation.csproj" />
     <ProjectReference Include="..\BaseTypes\BaseTypes.csproj" />
     <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender.csproj" />
     <ProjectReference Include="..\Concurrency\Concurrency.csproj" />
@@ -19,8 +20,10 @@
     <ProjectReference Include="..\Graph\Graph.csproj" />
     <ProjectReference Include="..\Houdini\Houdini.csproj" />
     <ProjectReference Include="..\Model\Model.csproj" />
-    <ProjectReference Include="..\Predication\Predication.csproj" />
+    <ProjectReference Include="..\ProofGeneration\ProofGeneration.csproj" />
+    <ProjectReference Include="..\Provers\LeanAuto\LeanAuto.csproj" />
     <ProjectReference Include="..\VCGeneration\VCGeneration.csproj" />
+    <ProjectReference Include="..\Provers\SMTLib\SMTLib.csproj" />
   </ItemGroup>
 
 </Project>

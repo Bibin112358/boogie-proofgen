@@ -1,4 +1,4 @@
-IntInModel.bpl(4,3): Error: This assertion might not hold.
+IntInModel.bpl(4,3): Error: this assertion could not be proved
 Execution trace:
     IntInModel.bpl(4,3): anon0
 *** MODEL
@@ -14,6 +14,9 @@ tickleBool -> {
   true -> true
   else -> true
 }
+*** STATE <initial>
+  i -> 0
+*** END_STATE
 *** END_MODEL
 
 Boogie program verifier finished with 0 verified, 1 error

@@ -373,7 +373,7 @@ namespace ProofGeneration.AstToCfg
           {
             correspondingBigBlockOrig = proofGenInfo.GetMappingLoopHeadBigBlocktoOrigLoopBigBlock()[startingBigBlock];
           }
-          BigBlock successorBigBlockOrig = correspondingBigBlockOrig.successorBigBlock;
+          BigBlock successorBigBlockOrig = correspondingBigBlockOrig.SuccessorBigBlock;
 
           #region conditional assumption 5: loop induction hypothesis
 
@@ -548,7 +548,7 @@ namespace ProofGeneration.AstToCfg
           string expansion = "apply (simp add: " + contId + "_def ";
           if (branchIndicator == BranchIndicator.GuardHolds)
           {
-            foreach (var thenBb in @if.thn.BigBlocks)
+            foreach (var thenBb in @if.Thn.BigBlocks)
             {
               BigBlock thenBranchCopy = thenBb;  
               string thenBranchId = beforeCfgProgAccess.BigBlockInfo().CmdsQualifiedName(thenBranchCopy).First();
@@ -556,9 +556,9 @@ namespace ProofGeneration.AstToCfg
               expansion += thenBranchId + "_def " + thenBranchContId + "_def ";
             }
           }
-          else if (@if.elseBlock != null)
+          else if (@if.ElseBlock != null)
           {
-            foreach (var elseBb in @if.elseBlock.BigBlocks)
+            foreach (var elseBb in @if.ElseBlock.BigBlocks)
             {
               BigBlock elseBranchCopy = elseBb; 
               string elseBranchId = beforeCfgProgAccess.BigBlockInfo().CmdsQualifiedName(elseBranchCopy).First();
@@ -750,7 +750,7 @@ namespace ProofGeneration.AstToCfg
            }
            
            //Get the BigBlock that comes after the loop.
-           BigBlock afterLoopBigBlockOrig = correspondingBigBlockOrig.successorBigBlock;
+           BigBlock afterLoopBigBlockOrig = correspondingBigBlockOrig.SuccessorBigBlock;
            BigBlock afterLoopBigBlockCopy = proofGenInfo.GetMappingOrigBigblockToCopyBigblock()[afterLoopBigBlockOrig];
            
            BigBlock unwrappedAfterLoopBigBlockCopy = null;
@@ -1172,7 +1172,7 @@ namespace ProofGeneration.AstToCfg
           string contId = "cont_" + proofGenInfo.GetMappingCopyBigBlockToIndex()[startingBigBlock];
             
           BigBlock correspondingBigBlockOrig = proofGenInfo.GetMappingCopyBigblockToOrigBigblock()[startingBigBlock];
-          BigBlock successorBigBlockOrig = correspondingBigBlockOrig.successorBigBlock;
+          BigBlock successorBigBlockOrig = correspondingBigBlockOrig.SuccessorBigBlock;
           BigBlock successorBigBlockCopy = proofGenInfo.GetMappingOrigBigblockToCopyBigblock()[successorBigBlockOrig];
 
           foreach (var kvPair in proofGenInfo.GetMappingLoopHeadBigBlocktoOrigLoopBigBlock())
@@ -1214,7 +1214,7 @@ namespace ProofGeneration.AstToCfg
           
             string nameLemmaSucc = "nameLemmaSuccTest";
             if (!proofGenInfo.GetMappingBigBlockToLoopBigBlock().ContainsKey(correspondingBigBlockOrig) || 
-                correspondingBigBlockOrig.successorBigBlock != proofGenInfo.GetMappingBigBlockToLoopBigBlock()[correspondingBigBlockOrig])
+                correspondingBigBlockOrig.SuccessorBigBlock != proofGenInfo.GetMappingBigBlockToLoopBigBlock()[correspondingBigBlockOrig])
             {
               nameLemmaSucc = mappingBigBlockToGlobalLemmaDecl[successorBigBlockCopy].Name; 
             }
@@ -1329,7 +1329,7 @@ namespace ProofGeneration.AstToCfg
 
             var proofEnd = new List<string>();
             if (proofGenInfo.GetMappingBigBlockToLoopBigBlock().ContainsKey(correspondingBigBlockOrig) &&
-                correspondingBigBlockOrig.successorBigBlock.ec is WhileCmd)
+                correspondingBigBlockOrig.SuccessorBigBlock.ec is WhileCmd)
             {
               proofEnd = new List<string>
               {
@@ -1689,16 +1689,16 @@ namespace ProofGeneration.AstToCfg
           BigBlock correspondingBigBlockOrig = proofGenInfo.GetMappingCopyBigblockToOrigBigblock()[startingBigBlock];
 
           IfCmd _if = (IfCmd) correspondingBigBlockOrig.ec;
-          BigBlock thenBranchOrig = _if.thn.BigBlocks.First();
+          BigBlock thenBranchOrig = _if.Thn.BigBlocks.First();
           BigBlock thenBranchCopy = proofGenInfo.GetMappingOrigBigblockToCopyBigblock()[thenBranchOrig];
           string thenBranchId = beforeCfgProgAccess.BigBlockInfo().CmdsQualifiedName(thenBranchCopy).First();
           string thenBranchContId = "cont_" + (proofGenInfo.GetMappingCopyBigBlockToIndex()[thenBranchCopy]);
           string nameLemmaThen = mappingBigBlockToGlobalLemmaDecl[thenBranchCopy].Name;
 
           string nameLemmaElse = "noLemmaElse";
-          if (_if.elseBlock != null)
+          if (_if.ElseBlock != null)
           {
-            BigBlock elseBranchOrig = _if.elseBlock.BigBlocks.First();
+            BigBlock elseBranchOrig = _if.ElseBlock.BigBlocks.First();
             BigBlock elseBranchCopy = proofGenInfo.GetMappingOrigBigblockToCopyBigblock()[elseBranchOrig];
             string elseBranchId = beforeCfgProgAccess.BigBlockInfo().CmdsQualifiedName(elseBranchCopy).First();
             string elseBranchContId = "cont_" + (proofGenInfo.GetMappingCopyBigBlockToIndex()[elseBranchCopy]);

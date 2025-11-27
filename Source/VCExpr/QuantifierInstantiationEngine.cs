@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
@@ -7,12 +9,11 @@ namespace Microsoft.Boogie.VCExprAST
   public class QuantifierInstantiationEngine
   {
     /*
-     * The algorithm implemented by QuantifierInstantiationEngine is a fixpoint. There are two phases.
+     * The algorithm implemented by QuantifierInstantiationEngine is a fixpoint. There are three phases.
      *
      * Start:
      *   - find instantiation sources in commands
      *   - skolemize quantifiers in the verification condition
-     *
      * At this point, a collection of quantifiers to be instantiated and a collection of instances
      * are installed.
      *
@@ -49,7 +50,8 @@ namespace Microsoft.Boogie.VCExprAST
     private string quantifierBindingNamePrefix;
     private string skolemConstantNamePrefix;
     internal VCExpressionGenerator vcExprGen;
-    internal Boogie2VCExprTranslator exprTranslator;
+    private Boogie2VCExprTranslator exprTranslator;
+    internal static ConcurrentDictionary<string, ConcurrentBag<Type>> labelToTypes = new(); // pool name may map to multiple types
 
     public static VCExpr Instantiate(Implementation impl, VCExpressionGenerator vcExprGen, Boogie2VCExprTranslator exprTranslator, VCExpr vcExpr)
     {
@@ -76,41 +78,15 @@ namespace Microsoft.Boogie.VCExprAST
       this.vcExprGen = vcExprGen;
       this.exprTranslator = exprTranslator;
     }
-    
+
     public static void SubstituteIncarnationInInstantiationSources(Cmd cmd, Substitution incarnationSubst)
     {
-      QKeyValue iter = null;
-      if (cmd is AssignCmd assignCmd)
+      var attrCmd = cmd as ICarriesAttributes;
+      if (attrCmd == null)
       {
-        iter = assignCmd.Attributes;
+        return;
       }
-      else if (cmd is PredicateCmd predicateCmd)
-      {
-        iter = predicateCmd.Attributes;
-      }
-      while (iter != null)
-      {
-        if (iter.Key == "add_to_pool" && iter.Params.Count > 1)
-        {
-          var label = iter.Params[0] as string;
-          if (label != null)
-          {
-            var newParams = new List<object> {label};
-            for (int i = 1; i < iter.Params.Count; i++)
-            {
-              var instance = iter.Params[i] as Expr;
-              if (instance != null)
-              {
-                instance = Substituter.Apply(incarnationSubst, instance);
-                newParams.Add(instance);
-              }
-            }
-            iter.ClearParams();
-            iter.AddParams(newParams);
-          }
-        }
-        iter = iter.Next;
-      }
+      attrCmd.Attributes = CivlAttributes.ApplySubstitutionToPoolHints(incarnationSubst, attrCmd.Attributes);
     }
 
     public VCExpr BindQuantifier(VCExprQuantifier node)
@@ -174,31 +150,51 @@ namespace Microsoft.Boogie.VCExprAST
       }
       lambdaDefinition[lambdaFunction] = translatedExpr;
       quantifierInstantiationInfo[translatedExpr] = new QuantifierInstantiationInfo(boundVariableToLabels);
+      lambdaToInstances[lambdaFunction] = new HashSet<List<VCExpr>>(new ListComparer<VCExpr>());
       return true;
     }
 
-    public static HashSet<string> FindInstantiationHints(ICarriesAttributes o)
+    public void AddLambdaInstances(Dictionary<Function, HashSet<List<VCExpr>>> lambdaFunctionToInstances)
+    {
+      AddDictionary(lambdaFunctionToInstances, this.lambdaToInstances);
+    }
+
+    public static HashSet<string> FindInstantiationHints(Variable v)
     {
       var labels = new HashSet<string>();
-      var iter = o.Attributes;
-      while (iter != null)
+      for(var iter = v.Attributes; iter != null; iter = iter.Next)
       {
-        if (iter.Key == "pool")
+        if (iter.Key != "pool")
         {
-          iter.Params.OfType<string>().Iter(x => labels.Add(x));
+          continue;
         }
-        iter = iter.Next;
+
+        var tok = iter.tok;
+        foreach(var x in iter.Params)
+        {
+          if (x is string poolName)
+          {
+            labels.Add(poolName);
+            var types = labelToTypes.GetOrAdd(poolName, _ => new());
+            
+            types.Add(v.TypedIdent.Type);
+          }
+          else
+          {
+            Console.WriteLine($"{tok.filename}({tok.line},{tok.col}): expected pool name");
+          }
+        }
       }
       return labels;
     }
     
-    public static Dictionary<string, HashSet<VCExpr>> FindInstantiationSources(ICarriesAttributes o, string attrName, Boogie2VCExprTranslator exprTranslator)
+    public static Dictionary<string, HashSet<VCExpr>> FindInstantiationSources(ICarriesAttributes o, Boogie2VCExprTranslator exprTranslator)
     {
       var freshInstances = new Dictionary<string, HashSet<VCExpr>>();
       var iter = o.Attributes;
       while (iter != null)
       {
-        if (iter.Key == attrName && iter.Params.Count > 1)
+        if (iter.Key == "add_to_pool" && iter.Params.Count > 1)
         {
           var label = iter.Params[0] as string;
           if (label != null)
@@ -224,7 +220,7 @@ namespace Microsoft.Boogie.VCExprAST
     
     private static void AddDictionary<T, U>(Dictionary<T, HashSet<U>> @from, Dictionary<T, HashSet<U>> to)
     {
-      @from.Iter(kv =>
+      @from.ForEach(kv =>
       {
         if (!to.ContainsKey(kv.Key))
         {
@@ -236,7 +232,7 @@ namespace Microsoft.Boogie.VCExprAST
     
     private static void AddDictionary<T, U>(Dictionary<T, HashSet<List<U>>> @from, Dictionary<T, HashSet<List<U>>> to)
     {
-      @from.Iter(kv =>
+      @from.ForEach(kv =>
       {
         if (!to.ContainsKey(kv.Key))
         {
@@ -248,36 +244,47 @@ namespace Microsoft.Boogie.VCExprAST
     
     private VCExpr Execute(Implementation impl, VCExpr vcExpr)
     {
-      impl.Blocks.ForEach(block => block.Cmds.OfType<PredicateCmd>().Iter(predicateCmd =>
+      impl.Blocks.ForEach(block => block.Cmds.OfType<PredicateCmd>().ForEach(predicateCmd =>
       {
-        AddDictionary(FindInstantiationSources(predicateCmd, "add_to_pool", exprTranslator), labelToInstances);
+        AddDictionary(FindInstantiationSources(predicateCmd, exprTranslator), labelToInstances);
       }));
       vcExpr = Skolemizer.Skolemize(this, Polarity.Negative, vcExpr);
-      lambdaToInstances = LambdaInstanceCollector.CollectInstances(this, vcExpr);
-      while (labelToInstances.Count > 0)
+      while (labelToInstances.Count > 0 || lambdaToInstances.Count > 0)
       {
-        var currLabelToInstances = labelToInstances;
+        /*
+         * Each iteration of this loop
+         * (1) moves the contents of labelToInstances into accLabelToInstances
+         * (2) moves the contents of lambdaToInstances into accLambdaToInstances
+         * (3) instantiates quantifiers in quantifierBinding against accLabelToInstances
+         * (4) instantiates lambdas in lambdaDefinition against accLabelToInstances and accLambdaToInstances
+         * Steps (3) and (4) could add more entries to quantifierBinding and lambdaDefinition.
+         * These entries are handled in the same iteration of this top-level loop.
+         * Steps (3) and (4) could also re-populate labelToInstances and lambdaToInstances;
+         * these new entries are handled in the next iteration of this top-level loop.
+         */
+        AddDictionary(labelToInstances, accLabelToInstances);
         labelToInstances = new Dictionary<string, HashSet<VCExpr>>();
-        AddDictionary(currLabelToInstances, accLabelToInstances);
 
-        var currLambdaToInstances = lambdaToInstances;
+        AddDictionary(lambdaToInstances, accLambdaToInstances);
         lambdaToInstances = new Dictionary<Function, HashSet<List<VCExpr>>>();
-        AddDictionary(currLambdaToInstances, accLambdaToInstances);
 
         var visitedQuantifierBindings = new HashSet<VCExprVar>();
         while (visitedQuantifierBindings.Count < quantifierBinding.Count)
         {
-          foreach (var v in quantifierBinding.Keys)
+          /*
+           * quantifierBinding may be modified in each iteration of the following loop.
+           * Therefore, take a snapshot of quantifierBinding.Keys to start the loop.
+           */
+          foreach (var v in quantifierBinding.Keys.ToList())
           {
             if (visitedQuantifierBindings.Contains(v))
             {
               continue;
             }
-
             visitedQuantifierBindings.Add(v);
             var quantifierExpr = quantifierBinding[v];
             var quantifierInfo = quantifierInstantiationInfo[quantifierExpr];
-            if (quantifierInfo.relevantLabels.Overlaps(currLabelToInstances.Keys))
+            if (quantifierInfo.relevantLabels.Overlaps(accLabelToInstances.Keys))
             {
               InstantiateQuantifier(quantifierExpr);
             }
@@ -287,18 +294,21 @@ namespace Microsoft.Boogie.VCExprAST
         var visitedLambdaFunctions = new HashSet<Function>();
         while (visitedLambdaFunctions.Count < lambdaDefinition.Count)
         {
-          foreach (var lambdaFunction in lambdaDefinition.Keys)
+          /*
+           * lambdaDefinition may be modified in each iteration of the following loop.
+           * Therefore, take a snapshot of lambdaDefinition.Keys to start the loop.
+           */
+          foreach (var lambdaFunction in lambdaDefinition.Keys.ToList())
           {
             if (visitedLambdaFunctions.Contains(lambdaFunction))
             {
               continue;
             }
-
             visitedLambdaFunctions.Add(lambdaFunction);
             var quantifierExpr = lambdaDefinition[lambdaFunction];
             var quantifierInfo = quantifierInstantiationInfo[quantifierExpr];
-            if (quantifierInfo.relevantLabels.Overlaps(currLabelToInstances.Keys) ||
-                currLambdaToInstances[lambdaFunction].Count > 0)
+            if (quantifierInfo.relevantLabels.Overlaps(accLabelToInstances.Keys) ||
+                (accLambdaToInstances.ContainsKey(lambdaFunction) && accLambdaToInstances[lambdaFunction].Count > 0))
             {
               InstantiateLambdaDefinition(lambdaFunction);
             }
@@ -329,17 +339,30 @@ namespace Microsoft.Boogie.VCExprAST
 
     private VCExpr AugmentWithInstances(VCExprQuantifier quantifierExpr)
     {
+      var instances = quantifierInstantiationInfo[quantifierExpr].instances;
       if (quantifierExpr.Quan == Quantifier.ALL)
       {
-        return vcExprGen.And(quantifierExpr,
-          vcExprGen.NAry(VCExpressionGenerator.AndOp,
-            quantifierInstantiationInfo[quantifierExpr].instances.Values.ToList()));
+        var instantiatedConjuncts = vcExprGen.NAry(VCExpressionGenerator.AndOp, instances.Values.ToList());
+        if (exprTranslator.GenerationOptions.Options.KeepQuantifier)
+        {
+          return vcExprGen.And(quantifierExpr, instantiatedConjuncts);
+        }
+        else
+        {
+          return instantiatedConjuncts;
+        }
       }
       else
       {
-        return vcExprGen.Or(quantifierExpr,
-          vcExprGen.NAry(VCExpressionGenerator.OrOp,
-            quantifierInstantiationInfo[quantifierExpr].instances.Values.ToList()));
+        var instantiatedDisjuncts = vcExprGen.NAry(VCExpressionGenerator.OrOp, instances.Values.ToList());
+        if (exprTranslator.GenerationOptions.Options.KeepQuantifier)
+        {
+          return vcExprGen.Or(quantifierExpr, instantiatedDisjuncts);
+        }
+        else
+        {
+          return instantiatedDisjuncts;
+        }
       }
     }
 
@@ -395,6 +418,16 @@ namespace Microsoft.Boogie.VCExprAST
       {
         return;
       }
+
+      // Since a pool name may be used with multiple types, we have to prune invalid instances
+      for (int i = 0; i < quantifierExpr.BoundVars.Count; i++)
+      {
+        if (!quantifierExpr.BoundVars[i].Type.Equals(instance[i].Type))
+        {
+          return;
+        }
+      }
+
       var subst = new VCExprSubstitution(
         Enumerable.Range(0, quantifierExpr.BoundVars.Count).ToDictionary(
           x => quantifierExpr.BoundVars[x],
@@ -416,6 +449,13 @@ namespace Microsoft.Boogie.VCExprAST
   
   class QuantifierCollector : BoundVarTraversingVCExprVisitor<Dictionary<VCExprVar, Polarity>, Polarity>
   {
+    /*
+     * This method collects quantifiers embedded in vcExpr.
+     * If polarity == Polarity.Negative, a quantifier F embedded in expr is collected
+     * if it can be proved that F is a forall quantifier in the NNF version of expr.
+     * If polarity == Polarity.Positive, a quantifier F embedded in expr is collected
+     * if it can be proved that F is an exists quantifier in the NNF version of expr.
+     */
     public static HashSet<VCExprQuantifier> CollectQuantifiers(VCExpr vcExpr, Polarity polarity)
     {
       var visitor = new QuantifierCollector();
@@ -529,7 +569,7 @@ namespace Microsoft.Boogie.VCExprAST
     public override Dictionary<VCExprVar, Polarity> Visit(VCExprQuantifier node, Polarity arg)
     {
       var result = base.Visit(node, arg);
-      if (arg != Polarity.Unknown && !result.Keys.Intersect(BoundTermVars).Any())
+      if (arg != Polarity.Unknown && !result.Keys.Intersect(BoundTermVars.Keys).Any())
       {
         if ((arg == Polarity.Positive) == (node.Quan == Quantifier.EX))
         {
@@ -554,18 +594,14 @@ namespace Microsoft.Boogie.VCExprAST
   {
     /*
      * The method Skolemize performs best-effort skolemization of the input expression expr.
-     * If polarity == Polarity.Negative, a quantifier F embedded in expr is skolemized
-     * provided it can be proved that F is a forall quantifier in the NNF version of expr.
-     * If polarity == Polarity.Positive, a quantifier F embedded in expr is skolemized
-     * provided it can be proved that F is an exists quantifier in the NNF version of expr.
-     *
      * Factorization is performed on the resulting expression.
      */
     public static VCExpr Skolemize(QuantifierInstantiationEngine qiEngine, Polarity polarity, VCExpr vcExpr)
     {
       var skolemizer = new Skolemizer(qiEngine, polarity, vcExpr);
       var skolemizedExpr = skolemizer.Mutate(vcExpr, true);
-      return Factorizer.Factorize(qiEngine, QuantifierCollector.Flip(polarity), skolemizedExpr);
+      LambdaInstanceCollector.CollectInstances(qiEngine, vcExpr);
+      return Factorizer.Factorize(qiEngine, skolemizedExpr);
     }
 
     private Skolemizer(QuantifierInstantiationEngine qiEngine, Polarity polarity, VCExpr vcExpr) : base(qiEngine.vcExprGen)
@@ -605,9 +641,9 @@ namespace Microsoft.Boogie.VCExprAST
         bound.Add(x, oldToNew[x]);
       }
       var retExpr = (VCExprQuantifier) base.Visit(node, arg);
-      retExpr.Info.instantiationExprs.Iter(kv =>
+      retExpr.Info.instantiationExprs.ForEach(kv =>
       {
-        kv.Value.Iter(expr => { qiEngine.AddTerm(kv.Key, expr.Accept(this, arg)); });
+        CollectionExtensions.ForEach(kv.Value, expr => { qiEngine.AddTerm(kv.Key, expr.Accept(this, arg)); });
       });
       foreach (var x in node.BoundVars)
       {
@@ -622,32 +658,24 @@ namespace Microsoft.Boogie.VCExprAST
     /* 
      * The method Factorize factors out quantified expressions in expr replacing them with a bound variable.
      * The binding between the bound variable and the quantifier replaced by it is registered in qiEngine.
-     * If polarity == Polarity.Positive, forall quantifiers are factorized.
-     * If polarity == Polarity.Negative, exists quantifiers are factorized.
      */
     
     private QuantifierInstantiationEngine qiEngine;
-    private HashSet<VCExprQuantifier> quantifiers;
 
-    public static VCExpr Factorize(QuantifierInstantiationEngine qiEngine, Polarity polarity, VCExpr vcExpr)
+    public static VCExpr Factorize(QuantifierInstantiationEngine qiEngine, VCExpr vcExpr)
     {
-      var factorizer = new Factorizer(qiEngine, polarity, vcExpr);
+      var factorizer = new Factorizer(qiEngine);
       return factorizer.Mutate(vcExpr, true);
     }
 
-    private Factorizer(QuantifierInstantiationEngine qiEngine, Polarity polarity, VCExpr vcExpr) : base(qiEngine.vcExprGen)
+    private Factorizer(QuantifierInstantiationEngine qiEngine) : base(qiEngine.vcExprGen)
     {
       this.qiEngine = qiEngine;
-      this.quantifiers = QuantifierCollector.CollectQuantifiers(vcExpr, polarity);
     }
 
     public override VCExpr Visit(VCExprQuantifier node, bool arg)
     {
-      if (quantifiers.Contains(node))
-      {
-        return qiEngine.BindQuantifier(node);
-      }
-      return base.Visit(node, arg);
+      return qiEngine.BindQuantifier(node);
     }
   }
   
@@ -686,39 +714,54 @@ namespace Microsoft.Boogie.VCExprAST
   
   class LambdaInstanceCollector : BoundVarTraversingVCExprVisitor<bool, bool>
   {
-    public static Dictionary<Function, HashSet<List<VCExpr>>> CollectInstances(QuantifierInstantiationEngine qiEngine, VCExpr vcExpr)
+    public static void CollectInstances(QuantifierInstantiationEngine qiEngine, VCExpr vcExpr)
     {
       var lambdaInstanceCollector = new LambdaInstanceCollector(qiEngine);
       lambdaInstanceCollector.Traverse(vcExpr, true);
-      var lambdaFunctionToInstances =
-        lambdaInstanceCollector.lambdaFunctions.ToDictionary(
-          x => x, x => new HashSet<List<VCExpr>>(new ListComparer<VCExpr>()));
+      var lambdaFunctionToInstances = new Dictionary<Function, HashSet<List<VCExpr>>>();
       foreach (var instance in lambdaInstanceCollector.instances)
       {
         var function = (instance.Op as VCExprBoogieFunctionOp).Func;
+        if (!lambdaFunctionToInstances.ContainsKey(function))
+        {
+          lambdaFunctionToInstances[function] = new HashSet<List<VCExpr>>(new ListComparer<VCExpr>());
+        }
         lambdaFunctionToInstances[function].Add(instance.UniformArguments.ToList());
       }
-      return lambdaFunctionToInstances;
+      qiEngine.AddLambdaInstances(lambdaFunctionToInstances);
     }
 
     private LambdaInstanceCollector(QuantifierInstantiationEngine qiEngine)
     {
       this.qiEngine = qiEngine;
-      this.lambdaFunctions = new HashSet<Function>();
       this.instances = new HashSet<VCExprNAry>();
-      this.instancesOnStack = new Stack<VCExprNAry>();
+      this.instancesOnStack = new Stack<Tuple<VCExprNAry, HashSet<VCExprVar>>>();
+      this.letBoundVarsOnStack = new Stack<List<VCExprVar>>();
     }
 
     private QuantifierInstantiationEngine qiEngine;
-    private HashSet<Function> lambdaFunctions;
     private HashSet<VCExprNAry> instances;
-    private Stack<VCExprNAry> instancesOnStack;
+    private Stack<Tuple<VCExprNAry, HashSet<VCExprVar>>> instancesOnStack;
+    private Stack<List<VCExprVar>> letBoundVarsOnStack;
 
     protected override bool StandardResult(VCExpr node, bool arg)
     {
       return true;
     }
 
+    private VCExprNAry Substitute(VCExprNAry vcExpr)
+    {
+      foreach (var letBoundVars in letBoundVarsOnStack)
+      {
+        var subst = new VCExprSubstitution(
+          letBoundVars.ToDictionary(x => x, x => BoundTermVars[x]),
+          new Dictionary<TypeVariable, Type>());
+        var substituter = new SubstitutingVCExprVisitor(qiEngine.vcExprGen);
+        vcExpr = (VCExprNAry) substituter.Mutate(vcExpr, subst);
+      }
+      return vcExpr;
+    }
+    
     public override bool Visit(VCExprNAry node, bool arg)
     {
       if (node.Op is VCExprBoogieFunctionOp functionOp)
@@ -726,9 +769,14 @@ namespace Microsoft.Boogie.VCExprAST
         var function = functionOp.Func;
         if (function.OriginalLambdaExprAsString != null && qiEngine.BindLambdaFunction(function))
         {
-          lambdaFunctions.Add(function);
-          instances.Add(node);
-          instancesOnStack.Push(node);
+          // substitute all let-bound variables in the lambda expr
+          var substExpr = Substitute(node);
+          instances.Add(substExpr);
+          // push the pair of substituted lambda expr and variables bound via quantifiers
+          // if one of these bound variables is mentioned in the lambda term,
+          // then this term is ineligible and should be removed
+          instancesOnStack.Push(new Tuple<VCExprNAry, HashSet<VCExprVar>>(substExpr,
+            BoundTermVars.Keys.Where(x => BoundTermVars[x] == null).ToHashSet()));
           var retVal = base.Visit(node, arg);
           instancesOnStack.Pop();
           return retVal;
@@ -739,14 +787,28 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override bool Visit(VCExprVar node, bool arg)
     {
-      if (BoundTermVars.Contains(node))
+      // check each lambda term going down the stack and remove ineligible terms if any
+      // once an eligible term is found, all terms below it must be eligible as well
+      foreach (var pair in instancesOnStack)
       {
-        foreach (var instance in instancesOnStack)
+        if (pair.Item2.Contains(node))
         {
-          instances.Remove(instance);
+          instances.Remove(pair.Item1);
+        }
+        else
+        {
+          break;
         }
       }
       return base.Visit(node, arg);
+    }
+    
+    public override bool Visit(VCExprLet node, bool arg)
+    {
+      letBoundVarsOnStack.Push(node.BoundVars);
+      var retVal = base.Visit(node, arg);
+      letBoundVarsOnStack.Pop();
+      return retVal;
     }
   }
   
@@ -754,18 +816,24 @@ namespace Microsoft.Boogie.VCExprAST
   {
     private bool hasInstances;
 
-    private void FindInstantiationSources(ICarriesAttributes o, string attrName)
+    private void FindInstantiationSources(ICarriesAttributes o)
     {
       var iter = o.Attributes;
       while (iter != null)
       {
-        if (iter.Key == attrName)
+        if (iter.Key == "add_to_pool")
         {
-          var label = iter.Params[0] as string;
-          var instance = iter.Params[1] as Expr;
-          if (label != null && instance != null)
+          if (iter.Params[0] is string poolName && QuantifierInstantiationEngine.labelToTypes.ContainsKey(poolName))
           {
-            hasInstances = true;
+            var tok = iter.tok;
+            var poolTypes = QuantifierInstantiationEngine.labelToTypes[poolName];
+            iter.Params.Skip(1).ForEach(x =>
+            {
+              if (x is Expr e && poolTypes.Contains(e.Type))
+              {
+                hasInstances = true;
+              }
+            });
           }
         }
         iter = iter.Next;
@@ -786,13 +854,13 @@ namespace Microsoft.Boogie.VCExprAST
     
     public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node)
     {
-      FindInstantiationSources(node, "skolem_add_to_pool");
+      FindInstantiationSources(node);
       return base.VisitQuantifierExpr(node);
     }
 
     public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
     {
-      cmdSeq.OfType<ICarriesAttributes>().Iter(cmd => FindInstantiationSources(cmd, "add_to_pool"));
+      cmdSeq.OfType<PredicateCmd>().ForEach(FindInstantiationSources);
       return base.VisitCmdSeq(cmdSeq);
     }
   }

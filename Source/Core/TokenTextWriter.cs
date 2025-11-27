@@ -8,11 +8,10 @@ namespace Microsoft.Boogie
 {
   public class TokenTextWriter : IDisposable
   {
-    string /*!*/
-      filename;
+    public PrintOptions Options { get; }
+    string filename;
 
-    TextWriter /*!*/
-      writer;
+    TextWriter writer;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -38,7 +37,7 @@ namespace Microsoft.Boogie
 
 
     // Keywords, this array *must* be sorted
-    public static readonly string[] /*!*/
+    public static readonly string[]
       BplKeywords =
       {
         "assert",
@@ -89,6 +88,7 @@ namespace Microsoft.Boogie
 
     // The original writer: where everything should finally end up.
     TextWriter actual_writer;
+    private readonly bool disposeWriter;
 
     public bool push(string type = null)
     {
@@ -195,7 +195,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    private IToken /*!*/ CurrentToken
+    private IToken CurrentToken
     {
       get
       {
@@ -216,6 +216,24 @@ namespace Microsoft.Boogie
     }
 
     public void SetToken(IfThenElse expr)
+    {
+      Contract.Requires(expr != null);
+      this.SetToken(t => expr.tok = t);
+    }
+
+    public void SetToken(FieldAccess expr)
+    {
+      Contract.Requires(expr != null);
+      this.SetToken(t => expr.tok = t);
+    }
+    
+    public void SetToken(FieldUpdate expr)
+    {
+      Contract.Requires(expr != null);
+      this.SetToken(t => expr.tok = t);
+    }
+    
+    public void SetToken(IsConstructor expr)
     {
       Contract.Requires(expr != null);
       this.SetToken(t => expr.tok = t);
@@ -262,61 +280,68 @@ namespace Microsoft.Boogie
       }
     }
 
-    public TokenTextWriter(string filename)
-      : this(filename, false)
+    public TokenTextWriter(string filename, CoreOptions options)
+      : this(filename, false, options)
     {
     }
 
-    public TokenTextWriter(string filename, bool pretty)
+    public TokenTextWriter(string filename, bool pretty, CoreOptions options)
       : base()
     {
       Contract.Requires(filename != null);
       this.pretty = pretty;
+      this.Options = options;
       this.filename = filename;
       this.writer = new StreamWriter(filename);
     }
 
-    public TokenTextWriter(string filename, bool setTokens, bool pretty)
+    public TokenTextWriter(string filename, bool setTokens, bool pretty, CoreOptions options)
       : base()
     {
       Contract.Requires(filename != null);
       this.pretty = pretty;
+      this.Options = options;
       this.filename = filename;
       this.writer = new StreamWriter(filename);
       this.setTokens = setTokens;
+      this.disposeWriter = true;
     }
 
-    public TokenTextWriter(string filename, TextWriter writer, bool setTokens, bool pretty)
+    public TokenTextWriter(string filename, TextWriter writer, bool setTokens, bool pretty, PrintOptions options)
       : base()
     {
       Contract.Requires(writer != null);
       Contract.Requires(filename != null);
       this.pretty = pretty;
+      this.Options = options;
       this.filename = filename;
       this.writer = writer;
       this.setTokens = setTokens;
+      this.disposeWriter = false;
     }
 
-    public TokenTextWriter(string filename, TextWriter writer, bool pretty)
+    public TokenTextWriter(string filename, TextWriter writer, bool pretty, CoreOptions options)
       : base()
     {
       Contract.Requires(writer != null);
       Contract.Requires(filename != null);
       this.pretty = pretty;
+      this.Options = options;
       this.filename = filename;
       this.writer = writer;
     }
 
-    public TokenTextWriter(TextWriter writer)
-      : this(writer, false)
+    public TokenTextWriter(TextWriter writer, CoreOptions options)
+      : this(writer, false, options)
     {
     }
 
-    public TokenTextWriter(TextWriter writer, bool pretty)
+    public TokenTextWriter(TextWriter writer, bool pretty, CoreOptions options)
       : base()
     {
       Contract.Requires(writer != null);
       this.pretty = pretty;
+      this.Options = options;
       this.filename = "<no file>";
       this.writer = writer;
     }
@@ -471,7 +496,9 @@ namespace Microsoft.Boogie
 
     public void Close()
     {
-      this.writer.Close();
+      if (disposeWriter) {
+        writer.Close();
+      }
     }
 
     public void Dispose()

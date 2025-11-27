@@ -25,7 +25,7 @@ namespace ProofGeneration.Passification
                 var bCurLiveVars = new HashSet<Variable>();
                 foreach (var bSuc in cfg.GetSuccessorBlocks(b)) bCurLiveVars.UnionWith(liveVarsBefore[bSuc]);
 
-                for (var idx = b.cmds.Count - 1; idx >= 0; idx--) UpdateLiveSet(b.cmds[idx], bCurLiveVars);
+                for (var idx = b.Cmds.Count - 1; idx >= 0; idx--) UpdateLiveSet(b.Cmds[idx], bCurLiveVars);
 
                 //due to the VariableCollector's implementation bound variables may also have been included
                 bCurLiveVars.RemoveWhere(v => !allVarsSet.Contains(v));

@@ -2,6 +2,7 @@
 using Microsoft.BaseTypes;
 using NUnit.Framework;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 namespace CoreTests
@@ -12,6 +13,7 @@ namespace CoreTests
     [Test()]
     public void FunctionCall()
     {
+      var options = CommandLineOptions.FromArguments(TextWriter.Null);
       var fc = CreateFunctionCall("bv8slt", Microsoft.Boogie.Type.Bool, new List<Microsoft.Boogie.Type>()
       {
         BasicType.GetBvType(8),
@@ -27,7 +29,7 @@ namespace CoreTests
       // Deep type check (this was not broken before writing this test)
       Assert.IsNull(nary.Type);
 
-      var tc = new TypecheckingContext(this);
+      var tc = new TypecheckingContext(this, options);
       nary.Typecheck(tc);
 
       Assert.AreEqual(BasicType.Bool, nary.Type);
@@ -36,11 +38,12 @@ namespace CoreTests
     [Test()]
     public void FunctionCallTypeResolved()
     {
+      var options = CommandLineOptions.FromArguments(TextWriter.Null);
       // This test case requires that function calls have been resolved
       // correctly and that the ShallowType is correct.
       // It's simpler to let the parser and resolver do all the work here
       // than try to build all the objects manually.
-      var program = TestUtil.ProgramLoader.LoadProgramFrom(@"
+      var program = TestUtil.ProgramLoader.LoadProgramFrom(options, @"
                 function {:bvbuiltin ""bvugt""} bv8ugt(bv8,bv8) returns(bool);
 
                 procedure main(a:bv8)

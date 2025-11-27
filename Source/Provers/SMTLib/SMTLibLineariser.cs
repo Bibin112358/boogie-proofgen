@@ -4,6 +4,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
 
@@ -24,18 +25,18 @@ namespace Microsoft.Boogie.SMTLib
   ////////////////////////////////////////////////////////////////////////////////////////
 
   // Lineariser for expressions. The result (bool) is currently not used for anything
-  public class SMTLibExprLineariser : IVCExprVisitor<bool, LineariserOptions /*!*/>
+  public class SMTLibExprLineariser : IVCExprVisitor<bool, LineariserOptions>
   {
     public SMTLibOptions LibOptions { get; }
 
-    public SMTLibExprLineariser(TextWriter wr, UniqueNamer namer, SMTLibOptions libOptions, SMTLibProverOptions opts,
+    public SMTLibExprLineariser(TextWriter wr, UniqueNamer namer, SMTLibOptions libOptions, SMTLibSolverOptions opts,
       ISet<VCExprVar> namedAssumes = null, IList<string> optReqs = null) : this(libOptions)
     {
       Contract.Requires(wr != null);
       Contract.Requires(namer != null);
       this.wr = wr;
       this.Namer = namer;
-      this.ProverOptions = opts;
+      this.solverOptions = opts;
       this.OptimizationRequests = optReqs;
       this.NamedAssumes = namedAssumes;
     }
@@ -61,7 +62,7 @@ namespace Microsoft.Boogie.SMTLib
       return "Select_" + TypeToString(node[0].Type);
     }
     
-    public static string ToString(VCExpr e, UniqueNamer namer, SMTLibOptions libOptions, SMTLibProverOptions opts,
+    public static string ToString(VCExpr e, UniqueNamer namer, SMTLibOptions libOptions, SMTLibSolverOptions opts,
       ISet<VCExprVar> namedAssumes = null, IList<string> optReqs = null, ISet<VCExprVar> tryAssumes = null)
     {
       Contract.Requires(e != null);
@@ -72,7 +73,7 @@ namespace Microsoft.Boogie.SMTLib
       SMTLibExprLineariser lin = new SMTLibExprLineariser(sw, namer, libOptions, opts, namedAssumes, optReqs);
       Contract.Assert(lin != null);
       lin.Linearise(e, LineariserOptions.Default);
-      return cce.NonNull(sw.ToString());
+      return Cce.NonNull(sw.ToString());
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////
@@ -105,7 +106,7 @@ namespace Microsoft.Boogie.SMTLib
 
     internal readonly UniqueNamer Namer;
     internal int UnderQuantifier = 0;
-    internal readonly SMTLibProverOptions ProverOptions;
+    internal readonly SMTLibSolverOptions solverOptions;
 
     readonly IList<string> OptimizationRequests;
     readonly ISet<VCExprVar> NamedAssumes;
@@ -123,57 +124,53 @@ namespace Microsoft.Boogie.SMTLib
     {
       Contract.Requires(t != null);
 
-      TypeSynonymAnnotation syn = t as TypeSynonymAnnotation;
-      if (syn != null)
+      if (t is TypeSynonymAnnotation syn)
       {
         TypeToStringHelper(syn.ExpandedType, sb);
       }
-      else
+      else if (t.IsMap)
       {
-        if (t.IsMap && LibOptions.UseArrayTheory)
+        MapType mapType = t.AsMap;
+        if (LibOptions.UseArrayTheory)
         {
-          MapType m = t.AsMap;
-          // Contract.Assert(m.MapArity == 1);
           sb.Append("(Array ");
-          foreach (Type tp in m.Arguments)
+          foreach (Type tp in mapType.Arguments)
           {
             sb.Append(TypeToString(tp)).Append(" ");
           }
 
-          sb.Append(TypeToString(m.Result)).Append(")");
+          sb.Append(TypeToString(mapType.Result)).Append(")");
         }
-        else if (t.IsMap)
+        else
         {
-          MapType m = t.AsMap;
           sb.Append('[');
-          for (int i = 0; i < m.MapArity; ++i)
+          for (int i = 0; i < mapType.MapArity; ++i)
           {
             if (i != 0)
             {
               sb.Append(',');
             }
 
-            TypeToStringHelper(m.Arguments[i], sb);
+            TypeToStringHelper(mapType.Arguments[i], sb);
           }
 
           sb.Append(']');
-          TypeToStringHelper(m.Result, sb);
+          TypeToStringHelper(mapType.Result, sb);
         }
-        else if (t.IsBool || t.IsInt || t.IsReal || t.IsFloat || t.IsBv || t.IsRMode || t.IsString)
+      }
+      else if (t.IsBool || t.IsInt || t.IsReal || t.IsFloat || t.IsBv || t.IsRMode || t.IsString)
+      {
+        sb.Append(TypeToString(t));
+      }
+      else
+      {
+        var buffer = new StringWriter();
+        using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false, false, LibOptions))
         {
-          sb.Append(TypeToString(t));
+          t.Emit(stream);
         }
-        else
-        {
-          System.IO.StringWriter buffer = new System.IO.StringWriter();
-          using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, /*setTokens=*/false, /*pretty=*/false)
-          )
-          {
-            t.Emit(stream);
-          }
 
-          sb.Append(buffer.ToString());
-        }
+        sb.Append(buffer.ToString());
       }
     }
 
@@ -218,6 +215,10 @@ namespace Microsoft.Boogie.SMTLib
       {
         return "(Seq " + TypeToString(t.AsCtor.Arguments[0]) + ")";
       }
+      else if (t.IsMap && t.AsMap.Arguments.Count == 0)
+      {
+        return TypeToString(t.AsMap.Result);
+      }
       else
       {
         StringBuilder sb = new StringBuilder();
@@ -229,7 +230,7 @@ namespace Microsoft.Boogie.SMTLib
         }
         else
         {
-          return SmtLibNameUtils.QuoteId("T@" + s);
+          return SMTLibNameUtils.QuoteId("T@" + s);
         }
       }
     }
@@ -238,7 +239,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       Contract.Requires(f != null);
       string retVal = null;
-      retVal = f.FindStringAttribute("bvbuiltin");
+      retVal = (f as ICarriesAttributes).FindStringAttribute("bvbuiltin");
 
       // It used to be "sign_extend 12" in Simplify, and is "(_ sign_extend 12)" with SMT
       if (retVal != null && (retVal.StartsWith("sign_extend ") || retVal.StartsWith("zero_extend ")))
@@ -248,7 +249,7 @@ namespace Microsoft.Boogie.SMTLib
 
       if (retVal == null)
       {
-        retVal = f.FindStringAttribute("builtin");
+        retVal = (f as ICarriesAttributes).FindStringAttribute("builtin");
       }
 
       if (retVal != null && !LibOptions.UseArrayTheory && SMTLibOpLineariser.ArrayOps.Contains(retVal))
@@ -300,7 +301,7 @@ namespace Microsoft.Boogie.SMTLib
       else if (node is VCExprFloatLit)
       {
         BigFloat lit = ((VCExprFloatLit) node).Val;
-        wr.Write("(" + lit.ToBVString() + ")");
+        wr.Write("(" + lit.ToSMTLibString() + ")");
       }
       else if (node is VCExprRModeLit)
       {
@@ -315,7 +316,7 @@ namespace Microsoft.Boogie.SMTLib
       else
       {
         Contract.Assert(false);
-        throw new cce.UnreachableException();
+        throw new Cce.UnreachableException();
       }
 
       return true;
@@ -386,7 +387,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         string optOp = node.Op.Equals(VCExpressionGenerator.MinimizeOp) ? "minimize" : "maximize";
         OptimizationRequests.Add(string.Format("({0} {1})", optOp,
-          ToString(node[0], Namer, CommandLineOptions.Clo, ProverOptions, NamedAssumes)));
+          ToString(node[0], Namer, LibOptions, solverOptions, NamedAssumes)));
         Linearise(node[1], options);
         return true;
       }
@@ -397,7 +398,7 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
-      if (node.Op.Equals(VCExpressionGenerator.NamedAssumeOp))
+      if (node.Op.Equals(VCExpressionGenerator.NamedAssumeOp) || node.Op.Equals(VCExpressionGenerator.NamedAssertOp))
       {
         var exprVar = node[0] as VCExprVar;
         NamedAssumes.Add(exprVar);
@@ -405,7 +406,7 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
-      return node.Accept<bool, LineariserOptions /*!*/>(OpLineariser, options);
+      return node.Accept<bool, LineariserOptions>(OpLineariser, options);
     }
 
     /////////////////////////////////////////////////////////////////////////////////////
@@ -442,12 +443,15 @@ namespace Microsoft.Boogie.SMTLib
 
         VCQuantifierInfo info = node.Info;
         var weight = info.weight;
-        if (!ProverOptions.UseWeights)
+        if (!solverOptions.UseWeights)
         {
           weight = 1;
         }
 
-        var hasAttrs = node.Triggers.Count > 0 || info.qid != null || weight != 1 || info.uniqueId != -1;
+        var hasAttrs = node.Triggers.Count > 0 ||
+                       weight != 1 ||
+                       (LibOptions.EmitDebugInformation &&
+                        (info.qid != null || info.uniqueId != -1));
 
         if (hasAttrs)
         {
@@ -461,7 +465,7 @@ namespace Microsoft.Boogie.SMTLib
           wr.Write("\n");
           if (info.qid != null && LibOptions.EmitDebugInformation)
           {
-            wr.Write(" :qid {0}\n", SmtLibNameUtils.QuoteId(info.qid));
+            wr.Write(" :qid {0}\n", SMTLibNameUtils.QuoteId(info.qid));
           }
 
           if (weight != 1)
@@ -595,7 +599,7 @@ namespace Microsoft.Boogie.SMTLib
     /////////////////////////////////////////////////////////////////////////////////////
 
     // Lineariser for operator terms. The result (bool) is currently not used for anything
-    internal class SMTLibOpLineariser : IVCExprOpVisitor<bool, LineariserOptions /*!*/>
+    internal class SMTLibOpLineariser : IVCExprOpVisitor<bool, LineariserOptions>
     {
       private readonly SMTLibExprLineariser ExprLineariser;
       private readonly TextWriter wr;
@@ -618,7 +622,7 @@ namespace Microsoft.Boogie.SMTLib
       ///////////////////////////////////////////////////////////////////////////////////
       private void WriteApplication(string opName, VCExprNAry /*!>!*/ call, LineariserOptions options)
       {
-        Contract.Requires(cce.NonNullElements(call.Arguments));
+        Contract.Requires(Cce.NonNullElements(call.Arguments));
         Contract.Requires(options != null);
         Contract.Assert(opName != null);
 
@@ -671,8 +675,6 @@ namespace Microsoft.Boogie.SMTLib
 
       public bool VisitNeqOp(VCExprNAry node, LineariserOptions options)
       {
-        //Contract.Requires(node != null);
-        //Contract.Requires(options != null);
         wr.Write("(not ");
         PrintEq(node, options);
         wr.Write(")");
@@ -706,7 +708,7 @@ namespace Microsoft.Boogie.SMTLib
       public bool VisitCustomOp(VCExprNAry node, LineariserOptions options)
       {
         VCExprCustomOp op = (VCExprCustomOp) node.Op;
-        if (!ExprLineariser.ProverOptions.UseTickleBool && op.Name == "tickleBool")
+        if (!ExprLineariser.solverOptions.UseTickleBool && op.Name == "tickleBool")
         {
           ExprLineariser.Linearise(VCExpressionGenerator.True, options);
         }
@@ -720,8 +722,6 @@ namespace Microsoft.Boogie.SMTLib
 
       public bool VisitDistinctOp(VCExprNAry node, LineariserOptions options)
       {
-        //Contract.Requires(node != null);
-        //Contract.Requires(options != null);
 
         if (node.Length < 2)
         {
@@ -763,6 +763,26 @@ namespace Microsoft.Boogie.SMTLib
           }
         }
 
+        return true;
+      }
+
+      public bool VisitFieldAccessOp(VCExprNAry node, LineariserOptions options)
+      {
+        var op = (VCExprFieldAccessOp)node.Op;
+        var constructor = op.DatatypeTypeCtorDecl.Constructors[op.ConstructorIndex];
+        Variable v = constructor.InParams[op.FieldIndex];
+        var name = ExprLineariser.Namer.GetQuotedName(v, v.Name);
+        WriteApplication(name, node, options);
+        return true;
+      }
+
+      public bool VisitIsConstructorOp(VCExprNAry node, LineariserOptions options)
+      {
+        var op = (VCExprIsConstructorOp)node.Op;
+        var constructor = op.DatatypeTypeCtorDecl.Constructors[op.ConstructorIndex];
+        var constructorName = ExprLineariser.Namer.GetName(constructor, constructor.Name);
+        var name = SMTLibNameUtils.AddQuotes($"is-{constructorName}");
+        WriteApplication(name, node, options);
         return true;
       }
 
@@ -989,25 +1009,6 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
-      private string ExtractDatatype(Function func)
-      {
-        if (func is DatatypeSelector)
-        {
-          DatatypeSelector selector = (DatatypeSelector) func;
-          Variable v = selector.constructor.InParams[selector.index];
-          return ExprLineariser.Namer.GetQuotedName(v, v.Name + "#" + selector.constructor.Name);
-        }
-        else if (func is DatatypeMembership)
-        {
-          DatatypeMembership membership = (DatatypeMembership) func;
-          return ExprLineariser.Namer.GetQuotedName(membership, "is-" + membership.constructor.Name);
-        }
-        else
-        {
-          return null;
-        }
-      }
-
       public bool VisitBoogieFunctionOp(VCExprNAry node, LineariserOptions options)
       {
         VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp) node.Op;
@@ -1015,7 +1016,6 @@ namespace Microsoft.Boogie.SMTLib
         string printedName;
 
         var builtin = ExprLineariser.ExtractBuiltin(op.Func);
-        var datatype = ExtractDatatype(op.Func);
         if (builtin != null)
         {
           printedName = CheckSeqApply(builtin, node);
@@ -1023,10 +1023,6 @@ namespace Microsoft.Boogie.SMTLib
           {
             printedName = CheckMapApply(builtin, node);
           }
-        }
-        else if (datatype != null)
-        {
-          printedName = datatype;
         }
         else
         {
@@ -1038,19 +1034,6 @@ namespace Microsoft.Boogie.SMTLib
         WriteApplication(printedName, node, options);
 
         return true;
-      }
-
-      private static Type ResultType(Type type)
-      {
-        MapType mapType = type as MapType;
-        if (mapType != null)
-        {
-          return ResultType(mapType.Result);
-        }
-        else
-        {
-          return type;
-        }
       }
 
       private string CheckSeqApply(string name, VCExprNAry node)
@@ -1103,8 +1086,8 @@ namespace Microsoft.Boogie.SMTLib
         }
         else if (name == "MapEq")
         {
-          Type type = ResultType(node[0].Type);
-          string s = ExprLineariser.TypeToString(type);
+          var mapType = (MapType)node[0].Type;
+          string s = ExprLineariser.TypeToString(mapType.Result);
           return "(_ map (= (" + s + " " + s + ") Bool))";
         }
         else if (name == "MapIff")
@@ -1145,8 +1128,8 @@ namespace Microsoft.Boogie.SMTLib
         }
         else if (name == "MapIte")
         {
-          Type type = ResultType(node.Type);
-          string s = ExprLineariser.TypeToString(type);
+          var mapType = (MapType)node.Type;
+          string s = ExprLineariser.TypeToString(mapType.Result);
           return "(_ map (ite (Bool " + s + " " + s + ") " + s + "))";
         }
         else

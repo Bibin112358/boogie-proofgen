@@ -1,0 +1,3 @@
+yield-requires-ensures-errors.bpl(12,22): Error: variable not available across layers in [1, 1]: a
+yield-requires-ensures-errors.bpl(13,21): Error: variable not available across layers in [1, 1]: a
+2 type checking errors detected in yield-requires-ensures-errors.bpl

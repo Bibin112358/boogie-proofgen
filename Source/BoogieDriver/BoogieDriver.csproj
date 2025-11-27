@@ -13,14 +13,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AbsInt\AbsInt.csproj" />
+    <ProjectReference Include="..\AbstractInterpretation\AbstractInterpretation.csproj" />
     <ProjectReference Include="..\BaseTypes\BaseTypes.csproj" />
     <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender.csproj" />
     <ProjectReference Include="..\Core\Core.csproj" />
     <ProjectReference Include="..\ExecutionEngine\ExecutionEngine.csproj" />
     <ProjectReference Include="..\Graph\Graph.csproj" />
     <ProjectReference Include="..\Houdini\Houdini.csproj" />
-    <ProjectReference Include="..\Predication\Predication.csproj" />
     <ProjectReference Include="..\Provers\SMTLib\SMTLib.csproj" />
     <ProjectReference Include="..\VCExpr\VCExpr.csproj" />
     <ProjectReference Include="..\VCGeneration\VCGeneration.csproj" />

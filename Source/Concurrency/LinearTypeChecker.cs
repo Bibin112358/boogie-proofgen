@@ -3,520 +3,98 @@ using System.Linq;
 
 namespace Microsoft.Boogie
 {
-  public enum LinearKind
-  {
-    ORDINARY,
-    LINEAR,
-    LINEAR_IN,
-    LINEAR_OUT
-  }
-
-  public class LinearQualifier
-  {
-    public string domainName;
-    public LinearKind kind;
-
-    public LinearQualifier(string domainName, LinearKind kind)
-    {
-      this.domainName = domainName;
-      this.kind = kind;
-    }
-  }
-
-  public class LinearDomain
-  {
-    public string domainName;
-    public Type permissionType;
-    public Dictionary<Type, Function> collectors;
-    public MapType mapTypeBool;
-    public MapType mapTypeInt;
-    public Function mapConstBool;
-    public Function mapConstInt;
-    public Function mapOr;
-    public Function mapImp;
-    public Function mapEqInt;
-    public Function mapAdd;
-    public Function mapIteInt;
-    public Function mapLe;
-
-    public LinearDomain(Program program, string domainName, Type permissionType, Dictionary<Type, Function> collectors)
-    {
-      this.domainName = domainName;
-      this.permissionType = permissionType;
-      this.collectors = collectors;
-
-      this.mapTypeBool = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> {this.permissionType},
-        Type.Bool);
-      this.mapTypeInt = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> {this.permissionType},
-        Type.Int);
-
-      this.mapConstBool = program.monomorphizer.Monomorphize("MapConst",
-        new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Bool} });
-      this.mapConstInt = program.monomorphizer.Monomorphize("MapConst",
-        new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Int} });
-      this.mapOr = program.monomorphizer.Monomorphize("MapOr",
-        new Dictionary<string, Type>() { {"T", permissionType} });
-      this.mapImp = program.monomorphizer.Monomorphize("MapImp",
-        new Dictionary<string, Type>() { {"T", permissionType} });
-      this.mapEqInt = program.monomorphizer.Monomorphize("MapEq",
-        new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Int} });
-      this.mapAdd = program.monomorphizer.Monomorphize("MapAdd",
-        new Dictionary<string, Type>() { {"T", permissionType} });
-      this.mapIteInt = program.monomorphizer.Monomorphize("MapIte",
-        new Dictionary<string, Type>() { {"T", permissionType}, {"U", Type.Int} });
-      this.mapLe = program.monomorphizer.Monomorphize("MapLe",
-        new Dictionary<string, Type>() { {"T", permissionType} });
-    }
-
-    public Expr MapConstInt(int value)
-    {
-      return ExprHelper.FunctionCall(mapConstInt, Expr.Literal(value));
-    }
-
-    public Expr MapEqTrue(Expr expr)
-    {
-      return Expr.Eq(expr, ExprHelper.FunctionCall(mapConstBool, Expr.True));
-    }
-  }
-
-  /// <summary>
-  /// Type checker for linear type annotations.
-  /// 
-  /// The functionality is basically grouped into four parts (see #region's).
-  /// 1) TypeCheck parses linear type attributes, sets up the data structures,
-  ///    and performs a dataflow check on procedure implementations.
-  /// 2) Useful public methods to generate expressions for permissions, their disjointness,
-  ///    and their union.
-  /// 3) Generation of linearity-invariant checker procedures for atomic actions.
-  /// 4) Erasure procedure to remove all linearity attributes
-  ///    (invoked after all other Civl transformations).
-  /// </summary>
   public class LinearTypeChecker : ReadOnlyVisitor
   {
+    public static LinearKind[] InKinds = {LinearKind.LINEAR, LinearKind.LINEAR_IN};
+    public static LinearKind[] OutKinds = {LinearKind.LINEAR, LinearKind.LINEAR_OUT};
+
     public Program program;
-    public CheckingContext checkingContext;
-    public Dictionary<string, LinearDomain> linearDomains;
-
+    private CheckingContext checkingContext;
     private CivlTypeChecker civlTypeChecker;
-
+    private Dictionary<Type, ActionDecl> pendingAsyncTypeToActionDecl;
+    private Dictionary<Type, LinearDomain> permissionTypeToLinearDomain;
+    private Dictionary<Type, Dictionary<Type, Function>> collectors;
     private Dictionary<Absy, HashSet<Variable>> availableLinearVars;
-    private Dictionary<Variable, LinearQualifier> inParamToLinearQualifier;
-    private Dictionary<Variable, string> outParamToDomainName;
-    private Dictionary<Variable, string> globalVarToDomainName;
-
-    // Only used in visitor implementation
-    private Dictionary<string, Dictionary<Type, Function>> domainNameToCollectors;
-    private Dictionary<Variable, string> varToDomainName;
 
     public LinearTypeChecker(CivlTypeChecker civlTypeChecker)
     {
       this.civlTypeChecker = civlTypeChecker;
       this.program = civlTypeChecker.program;
       this.checkingContext = civlTypeChecker.checkingContext;
-      this.domainNameToCollectors = new Dictionary<string, Dictionary<Type, Function>>();
-      this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
-      this.inParamToLinearQualifier = new Dictionary<Variable, LinearQualifier>();
-      this.outParamToDomainName = new Dictionary<Variable, string>();
-      this.globalVarToDomainName = new Dictionary<Variable, string>();
-      this.linearDomains = new Dictionary<string, LinearDomain>();
-      this.varToDomainName = new Dictionary<Variable, string>();
+      this.pendingAsyncTypeToActionDecl = new ();
+      foreach (var actionDecl in program.TopLevelDeclarations.OfType<ActionDecl>().Where(actionDecl => actionDecl.MaybePendingAsync))
+      {
+        pendingAsyncTypeToActionDecl[actionDecl.PendingAsyncType] = actionDecl;
+      }
+      // other fields are initialized in the TypeCheck method
     }
+
+    #region Visitor Implementation
+
+    private bool IsLegalAssignmentTarget(AssignLhs assignLhs)
+    {
+      if (assignLhs is SimpleAssignLhs)
+      {
+        return true;
+      }
+      if (assignLhs is MapAssignLhs mapAssignLhs)
+      {
+        return IsLegalAssignmentTarget(mapAssignLhs.Map);
+      }
+      var fieldAssignLhs = (FieldAssignLhs)assignLhs;
+      if (GetPermissionType(fieldAssignLhs.Datatype.Type) != null)
+      {
+        return false;
+      }
+      return IsLegalAssignmentTarget(fieldAssignLhs.Datatype);
+    }
+
+    private IEnumerable<Variable> LinearGlobalVariables =>
+      program.GlobalVariables.Where(v => FindLinearKind(v) != LinearKind.ORDINARY);
+    
+    private Procedure enclosingProc;
 
     private void Error(Absy node, string message)
     {
       checkingContext.Error(node, message);
     }
-
-    public string FindDomainName(Variable v)
-    {
-      if (globalVarToDomainName.ContainsKey(v))
-      {
-        return globalVarToDomainName[v];
-      }
-
-      if (inParamToLinearQualifier.ContainsKey(v))
-      {
-        return inParamToLinearQualifier[v].domainName;
-      }
-
-      if (outParamToDomainName.ContainsKey(v))
-      {
-        return outParamToDomainName[v];
-      }
-
-      string domainName = QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR);
-      if (domainName != null)
-      {
-        return domainName;
-      }
-
-      domainName = QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR_IN);
-      if (domainName != null)
-      {
-        return domainName;
-      }
-
-      return QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR_OUT);
-    }
-
-    public LinearKind FindLinearKind(Variable v)
-    {
-      if (globalVarToDomainName.ContainsKey(v))
-      {
-        return LinearKind.LINEAR;
-      }
-
-      if (inParamToLinearQualifier.ContainsKey(v))
-      {
-        return inParamToLinearQualifier[v].kind;
-      }
-
-      if (outParamToDomainName.ContainsKey(v))
-      {
-        return LinearKind.LINEAR;
-      }
-
-      if (QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR) != null)
-      {
-        return LinearKind.LINEAR;
-      }
-      else if (QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR_IN) != null)
-      {
-        return LinearKind.LINEAR_IN;
-      }
-      else if (QKeyValue.FindStringAttribute(v.Attributes, CivlAttributes.LINEAR_OUT) != null)
-      {
-        return LinearKind.LINEAR_OUT;
-      }
-      else
-      {
-        return LinearKind.ORDINARY;
-      }
-    }
-
-    public Formal LinearDomainInFormal(string domainName)
-    {
-      return civlTypeChecker.Formal("linear_" + domainName + "_in", linearDomains[domainName].mapTypeBool, true);
-    }
-
-    public LocalVariable LinearDomainAvailableLocal(string domainName)
-    {
-      return civlTypeChecker.LocalVariable("linear_" + domainName + "_available", linearDomains[domainName].mapTypeBool);
-    }
-
-    private static List<string> FindDomainNames(QKeyValue kv)
-    {
-      List<string> domains = new List<string>();
-      for (; kv != null; kv = kv.Next)
-      {
-        if (kv.Key != CivlAttributes.LINEAR)
-        {
-          continue;
-        }
-
-        foreach (var o in kv.Params)
-        {
-          if (o is string s)
-          {
-            domains.Add(s);
-          }
-        }
-      }
-      return domains;
-    }
     
-    public void TypeCheck()
+    private bool IsOrdinary(Variable target)
     {
-      this.VisitProgram(program);
-      
-      var permissionTypes = GetPermissionTypes();
-      ProcessCollectors(permissionTypes);
-      
-      if (checkingContext.ErrorCount > 0)
+      if (!collectors.ContainsKey(target.TypedIdent.Type))
       {
-        return;
+        return true;
       }
-      foreach ((var domainName, var collectors) in domainNameToCollectors)
-      {
-        if (collectors.Count != 0)
-        {
-          this.linearDomains[domainName] =
-            new LinearDomain(program, domainName, permissionTypes[domainName], collectors);
-        }
-      }
-      foreach (Absy absy in this.availableLinearVars.Keys)
-      {
-        availableLinearVars[absy].RemoveWhere(v => v is GlobalVariable);
-      }
+      return FindLinearKind(target) == LinearKind.ORDINARY;
     }
 
-    private Dictionary<string, Type> GetPermissionTypes()
+    private bool IsOrdinary(AssignLhs assignLhs)
     {
-      var permissionTypes = new Dictionary<string, Type>();
-      foreach (var decl in program.TopLevelDeclarations.Where(decl => decl is TypeCtorDecl || decl is TypeSynonymDecl))
+      if (!collectors.ContainsKey(assignLhs.Type))
       {
-        foreach (var domainName in FindDomainNames(decl.Attributes))
-        {
-          if (permissionTypes.ContainsKey(domainName))
-          {
-            Error(decl, $"Duplicate permission type for domain {domainName}");
-          }
-          else if (decl is TypeCtorDecl typeCtorDecl)
-          {
-            if (typeCtorDecl.Arity > 0)
-            {
-              Error(decl, "Permission type must be fully instantiated");
-            }
-            else
-            {
-              permissionTypes[domainName] = new CtorType(Token.NoToken, typeCtorDecl, new List<Type>());
-            }
-          }
-          else
-          {
-            permissionTypes[domainName] =
-              new TypeSynonymAnnotation(Token.NoToken, (TypeSynonymDecl) decl, new List<Type>());
-          }
-        }
+        return true;
       }
-      return permissionTypes;
-    }
-
-    private void ProcessCollectors(Dictionary<string, Type> permissionTypes)
-    {
-      foreach (var variable in varToDomainName.Keys)
+      if (assignLhs is SimpleAssignLhs simpleAssignLhs)
       {
-        string domainName = FindDomainName(variable);
-        if (!permissionTypes.ContainsKey(domainName))
-        {
-          Error(variable, $"Permission type not declared for domain {domainName}");
-          continue;
-        }
-        var permissionType = permissionTypes[domainName];
-        if (!domainNameToCollectors.ContainsKey(domainName))
-        {
-          domainNameToCollectors[domainName] = new Dictionary<Type, Function>();
-        }
-        var variableType = variable.TypedIdent.Type;
-        if (!domainNameToCollectors[domainName].ContainsKey(variableType))
-        {
-          if (variableType.Equals(permissionType))
-          {
-            // add unit collector
-            domainNameToCollectors[domainName][variableType] =
-              program.monomorphizer.Monomorphize("MapUnit", new Dictionary<string, Type>() { {"T", variableType} });
-          }
-          else if (variableType.Equals(new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type>{permissionType}, Type.Bool)))
-          {
-            // add identity collector
-            domainNameToCollectors[domainName][variableType] =
-              program.monomorphizer.Monomorphize("Id", new Dictionary<string, Type>() { {"T", variableType} });
-          }
-          else
-          {
-            Error(variable, "Missing collector for linear variable " + variable.Name);
-          }
-        }
+        return FindLinearKind(simpleAssignLhs.AssignedVariable.Decl) == LinearKind.ORDINARY;
       }
-    }
-
-    #region Visitor Implementation
-
-    public override Program VisitProgram(Program node)
-    {
-      foreach (GlobalVariable g in program.GlobalVariables)
+      if (assignLhs is FieldAssignLhs fieldAssignLhs &&
+          fieldAssignLhs.FieldAccess.Fields.Any(f => FindLinearKind(f) != LinearKind.ORDINARY))
       {
-        string domainName = FindDomainName(g);
-        if (domainName != null)
-        {
-          globalVarToDomainName[g] = domainName;
-        }
+        return IsOrdinary(fieldAssignLhs.Datatype);
       }
-
-      return base.VisitProgram(node);
-    }
-
-    public override Function VisitFunction(Function node)
-    {
-      string domainName = QKeyValue.FindStringAttribute(node.Attributes, CivlAttributes.LINEAR);
-      if (domainName != null)
-      {
-        if (!domainNameToCollectors.ContainsKey(domainName))
-        {
-          domainNameToCollectors[domainName] = new Dictionary<Type, Function>();
-        }
-
-        if (node.InParams.Count == 1 && node.OutParams.Count == 1)
-        {
-          Type inType = node.InParams[0].TypedIdent.Type;
-          MapType outType = node.OutParams[0].TypedIdent.Type as MapType;
-          if (domainNameToCollectors[domainName].ContainsKey(inType))
-          {
-            Error(node, "A collector for domain for input type has already been defined");
-          }
-          else if (outType == null || outType.Arguments.Count != 1 || !outType.Result.Equals(Type.Bool))
-          {
-            Error(node, "Output of a linear domain collector should be of set type");
-          }
-          else
-          {
-            domainNameToCollectors[domainName][inType] = node;
-          }
-        }
-        else
-        {
-          Error(node, "Linear domain collector should have one input and one output parameter");
-        }
-      }
-
-      return base.VisitFunction(node);
-    }
-
-    public override Implementation VisitImplementation(Implementation node)
-    {
-      if (civlTypeChecker.procToAtomicAction.ContainsKey(node.Proc) ||
-          civlTypeChecker.procToIntroductionAction.ContainsKey(node.Proc) ||
-          civlTypeChecker.procToLemmaProc.ContainsKey(node.Proc))
-      {
-        return node;
-      }
-
-      node.PruneUnreachableBlocks();
-      node.ComputePredecessorsForBlocks();
-      GraphUtil.Graph<Block> graph = Program.GraphFromImpl(node);
-      graph.ComputeLoops();
-
-      HashSet<Variable> start = new HashSet<Variable>(globalVarToDomainName.Keys);
-      for (int i = 0; i < node.InParams.Count; i++)
-      {
-        Variable v = node.Proc.InParams[i];
-        string domainName = FindDomainName(v);
-        if (domainName != null)
-        {
-          var kind = FindLinearKind(v);
-          inParamToLinearQualifier[node.InParams[i]] = new LinearQualifier(domainName, kind);
-          if (kind == LinearKind.LINEAR || kind == LinearKind.LINEAR_IN)
-          {
-            start.Add(node.InParams[i]);
-          }
-        }
-      }
-
-      for (int i = 0; i < node.OutParams.Count; i++)
-      {
-        string domainName = FindDomainName(node.Proc.OutParams[i]);
-        if (domainName != null)
-        {
-          outParamToDomainName[node.OutParams[i]] = domainName;
-        }
-      }
-
-      var oldErrorCount = checkingContext.ErrorCount;
-      var impl = base.VisitImplementation(node);
-      if (oldErrorCount < checkingContext.ErrorCount)
-      {
-        return impl;
-      }
-
-      Stack<Block> dfsStack = new Stack<Block>();
-      HashSet<Block> dfsStackAsSet = new HashSet<Block>();
-      availableLinearVars[node.Blocks[0]] = start;
-      dfsStack.Push(node.Blocks[0]);
-      dfsStackAsSet.Add(node.Blocks[0]);
-      while (dfsStack.Count > 0)
-      {
-        Block b = dfsStack.Pop();
-        dfsStackAsSet.Remove(b);
-        HashSet<Variable> end = PropagateAvailableLinearVarsAcrossBlock(b);
-        if (b.TransferCmd is ReturnCmd)
-        {
-          foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(end))
-          {
-            Error(b.TransferCmd, $"Global variable {g.Name} must be available at a return");
-          }
-
-          foreach (Variable v in node.InParams)
-          {
-            if (FindDomainName(v) == null || FindLinearKind(v) == LinearKind.LINEAR_IN || end.Contains(v))
-            {
-              continue;
-            }
-
-            Error(b.TransferCmd, $"Input variable {v.Name} must be available at a return");
-          }
-
-          foreach (Variable v in node.OutParams)
-          {
-            if (FindDomainName(v) == null || end.Contains(v))
-            {
-              continue;
-            }
-
-            Error(b.TransferCmd, $"Output variable {v.Name} must be available at a return");
-          }
-
-          continue;
-        }
-
-        GotoCmd gotoCmd = b.TransferCmd as GotoCmd;
-        foreach (Block target in gotoCmd.labelTargets)
-        {
-          if (!availableLinearVars.ContainsKey(target))
-          {
-            availableLinearVars[target] = new HashSet<Variable>(end);
-            dfsStack.Push(target);
-            dfsStackAsSet.Add(target);
-          }
-          else
-          {
-            var savedAvailableVars = new HashSet<Variable>(availableLinearVars[target]);
-            availableLinearVars[target].IntersectWith(end);
-            if (savedAvailableVars.IsProperSupersetOf(availableLinearVars[target]) && !dfsStackAsSet.Contains(target))
-            {
-              dfsStack.Push(target);
-              dfsStackAsSet.Add(target);
-            }
-          }
-        }
-      }
-
-      if (graph.Reducible)
-      {
-        foreach (Block header in graph.Headers)
-        {
-          foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(availableLinearVars[header]))
-          {
-            Error(header, $"Global variable {g.Name} must be available at a loop head");
-          }
-        }
-      }
-
-      return impl;
+      return true;
     }
 
     private void AddAvailableVars(CallCmd callCmd, HashSet<Variable> start)
     {
-      foreach (IdentifierExpr ie in callCmd.Outs)
-      {
-        if (FindDomainName(ie.Decl) == null)
-        {
-          continue;
-        }
-
-        start.Add(ie.Decl);
-      }
-
+      callCmd.Outs.Where(ie => FindLinearKind(ie.Decl) != LinearKind.ORDINARY)
+        .ForEach(ie => start.Add(ie.Decl));
       for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
       {
         if (callCmd.Ins[i] is IdentifierExpr ie)
         {
-          Variable v = callCmd.Proc.InParams[i];
-          if (FindDomainName(v) == null)
-          {
-            continue;
-          }
-
-          if (FindLinearKind(v) == LinearKind.LINEAR_OUT)
+          if (FindLinearKind(callCmd.Proc.InParams[i]) == LinearKind.LINEAR_OUT)
           {
             start.Add(ie.Decl);
           }
@@ -534,57 +112,109 @@ namespace Microsoft.Boogie
 
     private HashSet<Variable> PropagateAvailableLinearVarsAcrossBlock(Block b)
     {
+      var linearGlobalVariables = LinearGlobalVariables;
       HashSet<Variable> start = new HashSet<Variable>(availableLinearVars[b]);
       foreach (Cmd cmd in b.Cmds)
       {
         if (cmd is AssignCmd assignCmd)
         {
+          var lhsVarsToAdd = new HashSet<Variable>();
           for (int i = 0; i < assignCmd.Lhss.Count; i++)
           {
-            if (FindDomainName(assignCmd.Lhss[i].DeepAssignedVariable) == null)
+            var lhs = assignCmd.Lhss[i];
+            if (IsOrdinary(lhs))
             {
               continue;
             }
-
-            IdentifierExpr ie = assignCmd.Rhss[i] as IdentifierExpr;
-            if (!start.Contains(ie.Decl))
+            var lhsVar = lhs.DeepAssignedVariable;
+            // assignment may violate the disjointness invariant
+            // therefore, drop lhsVar from the set of available variables
+            // but possibly add it in lhsVarsToAdd later
+            start.Remove(lhsVar);
+            var rhsExpr = assignCmd.Rhss[i];
+            if (rhsExpr is IdentifierExpr ie)
             {
-              Error(ie, "unavailable source for a linear read");
+              if (start.Contains(ie.Decl))
+              {
+                start.Remove(ie.Decl);
+              }
+              else
+              {
+                Error(ie, "unavailable source for a linear read");
+              }
+              lhsVarsToAdd.Add(lhsVar); // add always to prevent cascading error messages
+            }
+            else if (rhsExpr is NAryExpr { Fun: FunctionCall { Func: DatatypeConstructor constructor } } nAryExpr)
+            {
+              // pack
+              for (int j = 0; j < constructor.InParams.Count; j++)
+              {
+                if (FindLinearKind(constructor.InParams[j]) == LinearKind.ORDINARY)
+                {
+                  continue;
+                }
+                var arg = nAryExpr.Args[j];
+                if (arg is IdentifierExpr { Decl: Variable v })
+                {
+                  start.Remove(v);
+                }
+                else
+                {
+                  Error(arg, "unavailable source for a linear read");
+                }
+              }
+              if (GetPermissionType(rhsExpr.Type) == null)
+              {
+                lhsVarsToAdd.Add(lhsVar); // add always to prevent cascading error messages
+              }
+            }
+          }
+          start.UnionWith(lhsVarsToAdd);
+        }
+        else if (cmd is UnpackCmd unpackCmd)
+        {
+          if (unpackCmd.UnpackedLhs.Any(arg => FindLinearKind(arg.Decl) != LinearKind.ORDINARY))
+          {
+            var ie = unpackCmd.Rhs as IdentifierExpr;
+            if (start.Contains(ie.Decl))
+            {
+              start.Remove(ie.Decl);
+              unpackCmd.UnpackedLhs
+                .Where(arg => FindLinearKind(arg.Decl) != LinearKind.ORDINARY)
+                .ForEach(arg => start.Add(arg.Decl));
             }
             else
             {
-              start.Remove(ie.Decl);
+              Error(ie, "unavailable source for a linear read");
             }
-          }
-
-          foreach (AssignLhs assignLhs in assignCmd.Lhss)
-          {
-            if (FindDomainName(assignLhs.DeepAssignedVariable) == null)
-            {
-              continue;
-            }
-
-            start.Add(assignLhs.DeepAssignedVariable);
           }
         }
         else if (cmd is CallCmd callCmd)
         {
-          foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(start))
+          var isPrimitive = CivlPrimitives.IsPrimitive(callCmd.Proc);
+          if (!isPrimitive)
           {
-            Error(cmd, $"Global variable {g.Name} must be available at a call");
+            linearGlobalVariables.Except(start).ForEach(g =>
+            {
+              Error(cmd, $"global variable {g.Name} must be available at a call");
+            });
           }
-
           for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
           {
             Variable param = callCmd.Proc.InParams[i];
-            if (FindDomainName(param) == null)
+            if (IsOrdinary(param))
             {
               continue;
             }
-
-            IdentifierExpr ie = callCmd.Ins[i] as IdentifierExpr;
             LinearKind paramKind = FindLinearKind(param);
-            if (start.Contains(ie.Decl))
+            var ie = isPrimitive && paramKind == LinearKind.LINEAR
+                      ? CivlPrimitives.ExtractRootFromAccessPathExpr(callCmd.Ins[i])
+                      : callCmd.Ins[i] as IdentifierExpr;
+            if (paramKind == LinearKind.LINEAR_OUT)
+            {
+              start.Add(ie.Decl);
+            }
+            else if (start.Contains(ie.Decl))
             {
               if (callCmd.IsAsync || paramKind == LinearKind.LINEAR_IN)
               {
@@ -593,39 +223,47 @@ namespace Microsoft.Boogie
             }
             else
             {
-              if (paramKind == LinearKind.LINEAR_OUT)
-              {
-                start.Add(ie.Decl);
-              }
-              else
-              {
-                Error(ie, "unavailable source for a linear read");
-              }
+              Error(ie, $"unavailable source {ie} for linear parameter at position {i}");
             }
           }
-
+          var originalProc = (Procedure)Monomorphizer.GetOriginalDecl(callCmd.Proc);
+          if (originalProc.Name == "create_asyncs")
+          {
+            var attr = QKeyValue.FindAttribute(callCmd.Attributes, x => x.Key == "linear");
+            if (attr != null)
+            {
+              attr.Params.OfType<IdentifierExpr>().ForEach(ie => {
+                if (start.Contains(ie.Decl))
+                {
+                  start.Remove(ie.Decl);
+                }
+                else
+                {
+                  Error(ie, $"unavailable linear source");
+                }
+              });
+            }
+          }
           AddAvailableVars(callCmd, start);
           availableLinearVars[callCmd] = new HashSet<Variable>(start);
         }
         else if (cmd is ParCallCmd parCallCmd)
         {
-          foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(start))
+          linearGlobalVariables.Except(start).ForEach(g =>
           {
-            Error(cmd, $"Global variable {g.Name} must be available at a call");
-          }
-
+            Error(cmd, $"global variable {g.Name} must be available at a call");
+          });
           foreach (CallCmd parCallCallCmd in parCallCmd.CallCmds)
           {
             for (int i = 0; i < parCallCallCmd.Proc.InParams.Count; i++)
             {
               Variable param = parCallCallCmd.Proc.InParams[i];
-              if (FindDomainName(param) == null)
+              LinearKind paramKind = FindLinearKind(param);
+              if (paramKind == LinearKind.ORDINARY)
               {
                 continue;
               }
-
               IdentifierExpr ie = parCallCallCmd.Ins[i] as IdentifierExpr;
-              LinearKind paramKind = FindLinearKind(param);
               if (start.Contains(ie.Decl))
               {
                 if (paramKind == LinearKind.LINEAR_IN)
@@ -641,186 +279,471 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
-                  Error(ie, "unavailable source for a linear read");
+                  Error(ie, $"unavailable source {ie} for linear parameter at position {i}");
                 }
               }
             }
           }
-
           AddAvailableVars(parCallCmd, start);
           availableLinearVars[parCallCmd] = new HashSet<Variable>(start);
         }
         else if (cmd is HavocCmd havocCmd)
         {
-          foreach (IdentifierExpr ie in havocCmd.Vars)
-          {
-            if (FindDomainName(ie.Decl) == null)
-            {
-              continue;
-            }
-
-            start.Remove(ie.Decl);
-          }
-        }
-        else if (cmd is YieldCmd)
-        {
-          foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(start))
-          {
-            Error(cmd, $"Global variable {g.Name} must be available at a yield");
-          }
-
-          availableLinearVars[cmd] = new HashSet<Variable>(start);
+          havocCmd.Vars.Where(ie => FindLinearKind(ie.Decl) != LinearKind.ORDINARY)
+            .ForEach(ie => start.Remove(ie.Decl));
         }
       }
 
       return start;
     }
 
-    public override Variable VisitVariable(Variable node)
+    public override Procedure VisitYieldInvariantDecl(YieldInvariantDecl node)
     {
-      string domainName = FindDomainName(node);
-      if (domainName != null)
+      foreach (var v in node.InParams)
       {
-        varToDomainName[node] = domainName;
-        LinearKind kind = FindLinearKind(node);
-        if (kind != LinearKind.LINEAR)
+        var linearKind = FindLinearKind(v);
+        if (linearKind == LinearKind.LINEAR_IN || linearKind == LinearKind.LINEAR_OUT)
         {
-          if (node is GlobalVariable || node is LocalVariable || (node is Formal formal && !formal.InComing))
+          Error(v, "parameter to yield invariant may only be :linear");
+        }
+      }
+      return base.VisitYieldInvariantDecl(node);
+    }
+
+    public override Procedure VisitYieldProcedureDecl(YieldProcedureDecl node)
+    {
+      node.YieldRequires.ForEach(callCmd =>
+      {
+        var kinds = new List<LinearKind> { LinearKind.LINEAR, LinearKind.LINEAR_IN };
+        CheckLinearParameters(callCmd,
+          new HashSet<Variable>(node.InParams.Union(node.OutParams)
+            .Where(p => kinds.Contains(FindLinearKind(p)))));
+      });
+      node.YieldEnsures.ForEach(callCmd =>
+      {
+        var kinds = new List<LinearKind> { LinearKind.LINEAR, LinearKind.LINEAR_OUT };
+        CheckLinearParameters(callCmd,
+          new HashSet<Variable>(node.InParams.Union(node.OutParams)
+            .Where(p => kinds.Contains(FindLinearKind(p)))));
+      });
+      node.YieldPreserves.ForEach(callCmd =>
+      {
+        var kinds = new List<LinearKind> { LinearKind.LINEAR };
+        CheckLinearParameters(callCmd,
+          new HashSet<Variable>(node.InParams.Union(node.OutParams)
+            .Where(p => kinds.Contains(FindLinearKind(p)))));
+      });
+      return base.VisitYieldProcedureDecl(node);
+    }
+
+    public override Implementation VisitImplementation(Implementation node)
+    {
+      if (CivlPrimitives.IsPrimitive(node))
+      {
+        return node;
+      }
+
+      enclosingProc = node.Proc;
+      
+      node.PruneUnreachableBlocks(civlTypeChecker.Options);
+      node.ComputePredecessorsForBlocks();
+      GraphUtil.Graph<Block> graph = Program.GraphFromImpl(node);
+      graph.ComputeLoops();
+
+      var linearGlobalVariables = LinearGlobalVariables;
+      HashSet<Variable> start = new HashSet<Variable>(linearGlobalVariables.Union(node.InParams.Where(v =>
+      {
+        var kind = FindLinearKind(v);
+        return kind == LinearKind.LINEAR || kind == LinearKind.LINEAR_IN;
+      })));
+
+      var oldErrorCount = checkingContext.ErrorCount;
+      // Visit relevant fields of node directly rather than calling VisitImplementation to
+      // avoid visiting node.Proc (which would cause Procedure's to be visited more than once)
+      VisitVariableSeq(node.LocVars);
+      VisitBlockList(node.Blocks);
+      var impl = (Implementation) this.VisitDeclWithFormals(node);
+      if (oldErrorCount < checkingContext.ErrorCount)
+      {
+        return impl;
+      }
+
+      Stack<Block> dfsStack = new Stack<Block>();
+      HashSet<Block> dfsStackAsSet = new HashSet<Block>();
+      availableLinearVars[node.Blocks[0]] = start;
+      dfsStack.Push(node.Blocks[0]);
+      dfsStackAsSet.Add(node.Blocks[0]);
+      while (dfsStack.Count > 0)
+      {
+        Block b = dfsStack.Pop();
+        dfsStackAsSet.Remove(b);
+        HashSet<Variable> end = PropagateAvailableLinearVarsAcrossBlock(b);
+        if (b.TransferCmd is GotoCmd gotoCmd)
+        {
+          foreach (Block target in gotoCmd.LabelTargets)
           {
-            Error(node, "Variable must be declared linear (as opposed to linear_in or linear_out)");
+            if (!availableLinearVars.ContainsKey(target))
+            {
+              availableLinearVars[target] = new HashSet<Variable>(end);
+              dfsStack.Push(target);
+              dfsStackAsSet.Add(target);
+            }
+            else
+            {
+              var savedAvailableVars = new HashSet<Variable>(availableLinearVars[target]);
+              availableLinearVars[target].IntersectWith(end);
+              if (savedAvailableVars.IsProperSupersetOf(availableLinearVars[target]) && !dfsStackAsSet.Contains(target))
+              {
+                dfsStack.Push(target);
+                dfsStackAsSet.Add(target);
+              }
+            }
+          }
+        }
+        else
+        {
+          linearGlobalVariables.Except(end).Where(v => !IsOrdinary(v)).ForEach(g =>
+          {
+            Error(b.TransferCmd, $"global variable {g.Name} must be available at a return");
+          });
+          node.InParams.Except(end).Where(v =>
+          {
+            var kind = FindLinearKind(v);
+            return kind == LinearKind.LINEAR || kind == LinearKind.LINEAR_OUT;
+          }).Where(v => !IsOrdinary(v)).ForEach(v => 
+          { 
+            Error(b.TransferCmd, $"input variable {v.Name} must be available at a return");
+          });
+          node.OutParams.Except(end).Where(v => !IsOrdinary(v)).ForEach(v =>
+          {
+            Error(b.TransferCmd, $"output variable {v.Name} must be available at a return");
+          });
+        }
+      }
+
+      if (graph.Reducible)
+      {
+        foreach (Block header in graph.Headers)
+        {
+          foreach (GlobalVariable g in linearGlobalVariables.Except(availableLinearVars[header]))
+          {
+            Error(header, $"global variable {g.Name} must be available at a loop head");
           }
         }
       }
 
-      return base.VisitVariable(node);
+      return impl;
     }
 
     public override Cmd VisitAssignCmd(AssignCmd node)
     {
+      node.Lhss.Where(lhs => !IsLegalAssignmentTarget(lhs)).ForEach(lhs =>
+      {
+        Error(lhs, "illegal assignment target");
+      });
+
       HashSet<Variable> rhsVars = new HashSet<Variable>();
       for (int i = 0; i < node.Lhss.Count; i++)
       {
-        AssignLhs lhs = node.Lhss[i];
-        Variable lhsVar = lhs.DeepAssignedVariable;
-        string domainName = FindDomainName(lhsVar);
-        if (domainName == null)
+        var lhs = node.Lhss[i];
+        if (IsOrdinary(lhs))
         {
           continue;
         }
-
-        if (!(lhs is SimpleAssignLhs))
+        var rhsExpr = node.Rhss[i];
+        if (rhsExpr is IdentifierExpr rhs)
         {
-          Error(node, $"Only simple assignment allowed on linear variable {lhsVar.Name}");
-          continue;
+          var rhsKind = FindLinearKind(rhs.Decl);
+          if (rhsKind == LinearKind.ORDINARY)
+          {
+            Error(rhs, $"source of assignment must be linear");
+          }
+          else if (rhsVars.Contains(rhs.Decl))
+          {
+            Error(rhs, $"linear variable {rhs.Decl.Name} can occur at most once as the source of an assignment");
+          }
+          else if (InvalidAssignmentWithKeyCollection(lhs.DeepAssignedVariable, rhs.Decl))
+          {
+            Error(rhs, $"Mismatch in key collection between source and target");
+          }
+          else
+          {
+            rhsVars.Add(rhs.Decl);
+          }
         }
-
-        IdentifierExpr rhs = node.Rhss[i] as IdentifierExpr;
-        if (rhs == null)
+        else if (rhsExpr is NAryExpr { Fun: FunctionCall { Func: DatatypeConstructor constructor } } nAryExpr)
         {
-          Error(node, $"Only variable can be assigned to linear variable {lhsVar.Name}");
-          continue;
+          // pack
+          for (int j = 0; j < constructor.InParams.Count; j++)
+          {
+            var field = constructor.InParams[j];
+            if (FindLinearKind(field) == LinearKind.ORDINARY)
+            {
+              continue;
+            }
+            var arg = nAryExpr.Args[j];
+            if (arg is not IdentifierExpr ie)
+            {
+              Error(arg, $"pack argument for linear field {field} must be a variable");
+            }
+            else if (rhsVars.Contains(ie.Decl))
+            {
+              Error(arg, $"linear variable {ie.Decl.Name} can occur at most once as the source of an assignment");
+            }
+            else if (InvalidAssignmentWithKeyCollection(field, ie.Decl))
+            {
+              Error(arg, $"Mismatch in key collection between source and target");
+            }
+            else
+            {
+              rhsVars.Add(ie.Decl);
+            }
+          }
         }
-
-        string rhsDomainName = FindDomainName(rhs.Decl);
-        if (rhsDomainName == null)
-        {
-          Error(node, $"Only linear variable can be assigned to linear variable {lhsVar.Name}");
-          continue;
-        }
-
-        if (domainName != rhsDomainName)
-        {
-          Error(node,
-            $"Linear variable of domain {rhsDomainName} cannot be assigned to linear variable of domain {domainName}");
-          continue;
-        }
-
-        if (rhsVars.Contains(rhs.Decl))
-        {
-          Error(node, $"Linear variable {rhs.Decl.Name} can occur only once in the right-hand-side of an assignment");
-          continue;
-        }
-
-        rhsVars.Add(rhs.Decl);
       }
-
       return base.VisitAssignCmd(node);
     }
 
+    public override Cmd VisitUnpackCmd(UnpackCmd node)
+    {
+      var isLinearUnpack = false;
+      var unpackedLhs = node.UnpackedLhs.ToList();
+      for (int j = 0; j < unpackedLhs.Count; j++)
+      {
+        if (FindLinearKind(unpackedLhs[j].Decl) == LinearKind.ORDINARY)
+        {
+          continue;
+        }
+        isLinearUnpack = true;
+        var field = node.Constructor.InParams[j];
+        if (FindLinearKind(field) == LinearKind.ORDINARY)
+        {
+          Error(unpackedLhs[j], $"source of unpack must be linear field: {field}");
+        }
+        else if (InvalidAssignmentWithKeyCollection(unpackedLhs[j].Decl, field))
+        {
+          Error(unpackedLhs[j], $"Mismatch in key collection between source and target");
+        }
+      }
+      if (isLinearUnpack)
+      {
+        IdentifierExpr rhs = node.Rhs as IdentifierExpr;
+        if (rhs == null || FindLinearKind(rhs.Decl) == LinearKind.ORDINARY)
+        {
+          Error(node, $"source for unpack must be a linear variable");
+        }
+      }
+      return base.VisitUnpackCmd(node);
+    }
+    
     public override Cmd VisitCallCmd(CallCmd node)
     {
-      HashSet<Variable> inVars = new HashSet<Variable>();
+      var isPrimitive = CivlPrimitives.IsPrimitive(node.Proc);
+      var inVars = new HashSet<Variable>();
+      var globalInVars = new HashSet<Variable>();
       for (int i = 0; i < node.Proc.InParams.Count; i++)
       {
-        Variable formal = node.Proc.InParams[i];
-        string domainName = FindDomainName(formal);
-        if (domainName == null)
+        var formal = node.Proc.InParams[i];
+        var formalKind = FindLinearKind(formal);
+        if (IsOrdinary(formal))
         {
           continue;
         }
-
-        IdentifierExpr actual = node.Ins[i] as IdentifierExpr;
+        var isInoutLinearParamInPrimitiveCall = isPrimitive && formalKind == LinearKind.LINEAR;
+        var actual = isInoutLinearParamInPrimitiveCall 
+                      ? CivlPrimitives.ExtractRootFromAccessPathExpr(node.Ins[i]) 
+                      : node.Ins[i] as IdentifierExpr;
         if (actual == null)
         {
-          Error(node.Ins[i], $"Only variable can be passed to linear parameter {formal.Name}");
+          if (isInoutLinearParamInPrimitiveCall)
+          {
+            Error(node, $"invalid access path expression passed to inout linear parameter: {node.Ins[i]}");
+          }
+          else
+          {
+            Error(node, $"only variable can be passed to linear parameter: {node.Ins[i]}");
+          }
           continue;
         }
-
-        string actualDomainName = FindDomainName(actual.Decl);
-        if (actualDomainName == null)
+        var actualKind = FindLinearKind(actual.Decl);
+        if (actualKind == LinearKind.ORDINARY)
         {
-          Error(actual, $"Only a linear argument can be passed to linear parameter {formal.Name}");
+          Error(node, $"only linear variable can be passed to linear parameter: {actual}");
           continue;
         }
-
-        if (domainName != actualDomainName)
+        if (actual.Decl is GlobalVariable && !node.Proc.IsPure)
         {
-          Error(actual, "The domains of formal and actual parameters must be the same");
+          Error(node, $"only local linear variable can be an argument to a procedure call: {actual}");
           continue;
         }
-
-        if (actual.Decl is GlobalVariable)
-        {
-          Error(actual, "Only local linear variable can be an actual input parameter of a procedure call");
-          continue;
-        }
-
         if (inVars.Contains(actual.Decl))
         {
-          Error(node, $"Linear variable {actual.Decl.Name} can occur only once as an input parameter");
+          Error(node, $"linear variable {actual.Decl.Name} can occur only once as an input parameter");
           continue;
         }
-
+        if (!isPrimitive && InvalidAssignmentWithKeyCollection(formal, actual.Decl))
+        {
+          Error(node, $"Mismatch in key collection between source and target");
+          continue;
+        }
         inVars.Add(actual.Decl);
+        if (actual.Decl is GlobalVariable && actualKind == LinearKind.LINEAR_IN)
+        {
+          globalInVars.Add(actual.Decl);
+        }
       }
 
       for (int i = 0; i < node.Proc.OutParams.Count; i++)
       {
         IdentifierExpr actual = node.Outs[i];
-        string actualDomainName = FindDomainName(actual.Decl);
-        if (actualDomainName == null)
+        var actualKind = FindLinearKind(actual.Decl);
+        if (actualKind == LinearKind.ORDINARY)
         {
           continue;
         }
-
         Variable formal = node.Proc.OutParams[i];
-        string domainName = FindDomainName(formal);
-        if (domainName == null)
+        var formalKind = FindLinearKind(formal);
+        if (formalKind == LinearKind.ORDINARY)
         {
-          Error(node, "Only a linear variable can be passed to a linear parameter");
+          Error(node, $"only linear parameter can be assigned to a linear variable: {formal}");
           continue;
         }
-
-        if (domainName != actualDomainName)
+        if (!isPrimitive && InvalidAssignmentWithKeyCollection(actual.Decl, formal))
         {
-          Error(node, "The domains of formal and actual parameters must be the same");
+          Error(node, $"Mismatch in key collection between source and target");
           continue;
         }
+      }
 
-        if (actual.Decl is GlobalVariable)
+      var globalOutVars = node.Outs.Select(ie => ie.Decl).ToHashSet();
+      globalInVars.Where(v => !globalOutVars.Contains(v)).ForEach(v =>
+      {
+        Error(node, $"global variable passed as input to pure call but not received as output: {v}");
+      });
+
+      var originalProc = (Procedure)Monomorphizer.GetOriginalDecl(node.Proc);
+
+      if (isPrimitive)
+      {
+        var modifiedArgument = CivlPrimitives.ModifiedArgument(node)?.Decl;
+        if (modifiedArgument != null)
         {
-          Error(node, "Only local linear variable can be actual output parameter of a procedure call");
-          continue;
+          if (modifiedArgument is Formal formal && formal.InComing)
+          {
+            Error(node, $"primitive assigns to input variable: {formal}");
+          }
+          else if (node.Outs.Any(ie => ie.Decl == modifiedArgument))
+          {
+            Error(node, $"primitive assigns to input variable that is also an output variable: {modifiedArgument}");
+          }
+          else if (modifiedArgument is GlobalVariable &&
+                    enclosingProc is not YieldProcedureDecl &&
+                    enclosingProc.Modifies.All(v => v.Decl != modifiedArgument))
+          {
+            var str = enclosingProc is ActionDecl ? "action's" : "procedure's";
+            Error(node,
+              $"primitive assigns to a global variable that is not in the enclosing {str} modifies clause: {modifiedArgument}");
+          }
+
+          if (originalProc.Name == "Map_Split")
+          {
+            if (InvalidAssignmentWithKeyCollection(node.Outs[0].Decl, modifiedArgument))
+            {
+              Error(node.Outs[0], $"Mismatch in key collection between source and target");
+            }
+          }
+          else if (originalProc.Name == "Map_Join")
+          {
+            if (node.Ins[1] is IdentifierExpr ie && InvalidAssignmentWithKeyCollection(modifiedArgument, ie.Decl))
+            {
+              Error(node.Ins[1], $"Mismatch in key collection between source and target");
+            }
+          }
+          else if (originalProc.Name == "Map_Get" || originalProc.Name == "Map_Put")
+          {
+            if (!AreKeysCollected(modifiedArgument))
+            {
+              Error(node, $"Keys must be collected");
+            }
+          }
+          else if (originalProc.Name == "Map_GetValue" || originalProc.Name == "Map_PutValue")
+          {
+            if (AreKeysCollected(modifiedArgument))
+            {
+              Error(node, $"Keys must not be collected");
+            }
+          }
+        }
+        else if (originalProc.Name == "Map_Unpack")
+        {
+          if (node.Ins[0] is IdentifierExpr ie && !AreKeysCollected(ie.Decl))
+          {
+            Error(node.Ins[0], $"Mismatch in key collection between source and target");
+          }
+        }
+      }
+
+      if (originalProc.Name == "create_multi_asyncs" || originalProc.Name == "create_asyncs")
+      {
+        var actionDecl = GetActionDeclFromCreateAsyncs(node);
+        if (originalProc.Name == "create_multi_asyncs")
+        {
+          foreach (var inParam in actionDecl.InParams.Where(inParam => FindLinearKind(inParam) != LinearKind.ORDINARY))
+          {
+            Error(node, $"linear parameters not allowed on pending async");
+          }
+        }
+        else if (originalProc.Name == "create_asyncs")
+        {
+          var linearArgumentTypes = new List<Type>();
+          foreach (var inParam in actionDecl.InParams.Where(inParam => FindLinearKind(inParam) != LinearKind.ORDINARY))
+          {
+            if (inParam.TypedIdent.Type is CtorType ctorType)
+            {
+              var originalTypeCtorDecl = Monomorphizer.GetOriginalDecl(ctorType.Decl);
+              if (originalTypeCtorDecl.Name == "One")
+              {
+                var typeInstantiation = civlTypeChecker.program.monomorphizer.GetTypeInstantiation(ctorType.Decl);
+                var setType = TypeHelper.CtorType(civlTypeChecker.program.monomorphizer.InstantiateTypeCtorDecl("Set", typeInstantiation));
+                linearArgumentTypes.Add(setType);
+                continue;
+              }
+              else if (originalTypeCtorDecl.Name == "Set")
+              {
+                linearArgumentTypes.Add(ctorType);
+                continue;
+              }
+            }
+            Error(node, $"linear parameter must be of type One or Set");
+          }
+          var attr = QKeyValue.FindAttribute(node.Attributes, x => x.Key == "linear");
+          var attrParams = attr == null ? new List<object>() : attr.Params;
+          var identifierExprs = attrParams.OfType<IdentifierExpr>().ToList();
+          if (identifierExprs.Count != attrParams.Count())
+          {
+            Error(node, $"each linear source must be a variable");
+          }
+          else if (identifierExprs.Count != linearArgumentTypes.Count)
+          {
+            Error(node, $"number of linear sources must match the number of linear parameters");
+          }
+          else
+          {
+            foreach (var (ie, type) in identifierExprs.Zip(linearArgumentTypes))
+            {
+              if (ie.Decl is LocalVariable || ie.Decl is Formal)
+              {
+                if (!ie.Decl.TypedIdent.Type.Equals(type))
+                {
+                  Error(ie, $"expected type {type}");
+                }
+              }
+              else
+              {
+                Error(ie, $"expected local or formal variable");
+              }
+            }
+          }
         }
       }
 
@@ -829,77 +752,213 @@ namespace Microsoft.Boogie
 
     public override Cmd VisitParCallCmd(ParCallCmd node)
     {
-      HashSet<Variable> parallelCallInvars = new HashSet<Variable>();
-      foreach (CallCmd callCmd in node.CallCmds)
+      if (node.CallCmds.Any(callCmd => CivlPrimitives.IsPrimitive(callCmd.Proc)))
       {
-        if (civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc))
-        {
-          continue;
-        }
-
+        Error(node, "linear primitives may not be invoked in a parallel call");
+        return node;
+      }
+      HashSet<Variable> parallelCallInputVars = new HashSet<Variable>();
+      foreach (CallCmd callCmd in node.CallCmds.Where(callCmd => callCmd.Proc is not YieldInvariantDecl))
+      {
         for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
         {
-          Variable formal = callCmd.Proc.InParams[i];
-          string domainName = FindDomainName(formal);
-          if (domainName == null)
+          if (FindLinearKind(callCmd.Proc.InParams[i]) == LinearKind.ORDINARY)
           {
             continue;
           }
-
-          IdentifierExpr actual = callCmd.Ins[i] as IdentifierExpr;
-          if (parallelCallInvars.Contains(actual.Decl))
+          if (callCmd.Ins[i] is IdentifierExpr actual)
           {
-            Error(node,
-              $"Linear variable {actual.Decl.Name} can occur only once as an input parameter of a parallel call");
-          }
-          else
-          {
-            parallelCallInvars.Add(actual.Decl);
+            if (parallelCallInputVars.Contains(actual.Decl))
+            {
+              Error(node,
+                $"linear variable can occur only once as an input parameter of a parallel call: {actual.Decl.Name}");
+            }
+            else
+            {
+              parallelCallInputVars.Add(actual.Decl);
+            }
           }
         }
       }
-
-      foreach (CallCmd callCmd in node.CallCmds)
+      foreach (CallCmd callCmd in node.CallCmds.Where(callCmd => callCmd.Proc is YieldInvariantDecl))
       {
-        if (!civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc))
-        {
-          continue;
-        }
-
         for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
         {
-          Variable formal = callCmd.Proc.InParams[i];
-          string domainName = FindDomainName(formal);
-          if (domainName == null)
+          if (FindLinearKind(callCmd.Proc.InParams[i]) == LinearKind.ORDINARY)
           {
             continue;
           }
-
-          IdentifierExpr actual = callCmd.Ins[i] as IdentifierExpr;
-          if (parallelCallInvars.Contains(actual.Decl))
+          if (callCmd.Ins[i] is IdentifierExpr actual && parallelCallInputVars.Contains(actual.Decl))
           {
             Error(node,
-              $"Linear variable {actual.Decl.Name} cannot be an input parameter to both a yield invariant and a procedure in a parallel call");
+              $"linear variable cannot be an input parameter to both a yield invariant and a procedure in a parallel call: {actual.Decl.Name}");
           }
         }
       }
-
       return base.VisitParCallCmd(node);
     }
 
-    public override Requires VisitRequires(Requires requires)
+    public override Variable VisitVariable(Variable node)
     {
-      return requires;
+      var kind = FindLinearKind(node);
+      if ((kind == LinearKind.LINEAR_IN || kind == LinearKind.LINEAR_OUT) && 
+          (node is GlobalVariable || node is LocalVariable || (node is Formal formal && !formal.InComing)))
+      {
+        checkingContext.Error(node, "variable must be declared linear (as opposed to linear_in or linear_out)");
+      }
+      return node;
     }
 
-    public override Ensures VisitEnsures(Ensures ensures)
+    private bool AreKeysCollected(Variable v)
     {
-      return ensures;
+      var attr = QKeyValue.FindAttribute(v.Attributes, x => x.Key == "linear");
+      var attrParams = attr == null ? new List<object>() : attr.Params;
+      foreach (var param in attrParams)
+      {
+        if (param is string s && s == "no_collect_keys")
+        {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    private bool InvalidAssignmentWithKeyCollection(Variable target, Variable source)
+    {
+      return AreKeysCollected(target) && !AreKeysCollected(source);
+    }
+
+    private void CheckLinearStoreAccessInGuards()
+    {
+      program.Implementations.ForEach(impl => {
+        if (CivlPrimitives.IsPrimitive(impl))
+        {
+          return;
+        }
+        Stack<StmtList> stmtLists = new Stack<StmtList>();
+        if (impl.StructuredStmts != null)
+        {
+          stmtLists.Push(impl.StructuredStmts);
+        }
+        while (stmtLists.Count > 0)
+        {
+          var stmtList = stmtLists.Pop();
+          stmtList.BigBlocks.Where(bigBlock => bigBlock.ec != null).ForEach(bigBlock => {
+            switch (bigBlock.ec) {
+              case IfCmd ifCmd:
+                void ProcessIfCmd(IfCmd ifCmd)
+                {
+                  if (ifCmd.Guard != null && LinearStoreVisitor.HasLinearStoreAccess(ifCmd.Guard))
+                  {
+                    checkingContext.Error(ifCmd.tok, "access to linear store not allowed");
+                  }
+                  stmtLists.Push(ifCmd.Thn);
+                  if (ifCmd.ElseIf != null)
+                  {
+                    ProcessIfCmd(ifCmd.ElseIf);
+                  }
+                  else if (ifCmd.ElseBlock != null)
+                  {
+                    stmtLists.Push(ifCmd.ElseBlock);
+                  }
+                }
+                ProcessIfCmd(ifCmd);
+                break;
+              case WhileCmd whileCmd:
+                if (whileCmd.Guard != null && LinearStoreVisitor.HasLinearStoreAccess(whileCmd.Guard))
+                {
+                  checkingContext.Error(whileCmd.tok, "access to linear store not allowed");
+                }
+                stmtLists.Push(whileCmd.Body);
+                break;
+              default:
+                break;
+            }
+          });
+        }
+      });
     }
 
     #endregion
 
     #region Useful public methods
+
+    public ConcurrencyOptions Options => civlTypeChecker.Options;
+    
+    public static LinearKind FindLinearKind(Variable v)
+    {
+      if (QKeyValue.FindAttribute(v.Attributes, x => x.Key == CivlAttributes.LINEAR) != null)
+      {
+        return LinearKind.LINEAR;
+      }
+      if (QKeyValue.FindAttribute(v.Attributes, x => x.Key == CivlAttributes.LINEAR_IN) != null)
+      {
+        return LinearKind.LINEAR_IN;
+      }
+      if (QKeyValue.FindAttribute(v.Attributes, x => x.Key == CivlAttributes.LINEAR_OUT) != null)
+      {
+        return LinearKind.LINEAR_OUT;
+      }
+      return LinearKind.ORDINARY;
+    }
+
+    public int CheckLinearParameters(CallCmd callCmd, HashSet<Variable> availableLinearVarsAtCallCmd)
+    {
+      int errorCount = 0;
+      foreach (var (ie, formal) in callCmd.Ins.Zip(callCmd.Proc.InParams))
+      {
+        if (FindLinearKind(formal) == LinearKind.ORDINARY)
+        {
+          continue;
+        }
+        if (ie is IdentifierExpr actual && !availableLinearVarsAtCallCmd.Contains(actual.Decl))
+        {
+          Error(actual, "argument must be available");
+          errorCount++;
+        }
+      }
+      return errorCount;
+    }
+    
+    public IEnumerable<LinearDomain> LinearDomains => permissionTypeToLinearDomain.Values;
+
+    public void TypeCheck()
+    {
+      (this.permissionTypeToLinearDomain, this.collectors) = LinearDomainCollector.Collect(this);
+      this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
+      this.VisitProgram(program);
+      foreach (var absy in this.availableLinearVars.Keys)
+      {
+        availableLinearVars[absy].RemoveWhere(v => v is GlobalVariable);
+      }
+      if (checkingContext.ErrorCount == 0 && program.monomorphizer != null)
+      {
+        var impls = program.TopLevelDeclarations.OfType<Implementation>().ToList();
+        impls.ForEach(impl =>
+        {
+          if (impl.Proc is not YieldProcedureDecl)
+          {
+            LinearRewriter.Rewrite(civlTypeChecker, impl);
+          }
+        }); 
+      }
+    }
+
+    public Type GetPermissionType(Type type)
+    {
+      if (type is CtorType ctorType && ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
+      {
+        var originalTypeCtorDecl = Monomorphizer.GetOriginalDecl(datatypeTypeCtorDecl);
+        var typeName = originalTypeCtorDecl.Name;
+        if (typeName == "Map" || typeName == "Set" || typeName == "One")
+        {
+          var actualTypeParams = program.monomorphizer.GetTypeInstantiation(datatypeTypeCtorDecl);
+          return actualTypeParams[0];
+        }
+      }
+      return null;
+    }
+
     public ISet<Variable> AvailableLinearVars(Absy absy)
     {
       if (availableLinearVars.ContainsKey(absy))
@@ -912,82 +971,94 @@ namespace Microsoft.Boogie
       }
     }
 
+    public IEnumerable<Expr> PermissionExprs(LinearDomain domain, IEnumerable<Variable> scope)
+    {
+      return FilterVariables(domain, scope)
+        .Select(v => ExprHelper.FunctionCall(collectors[v.TypedIdent.Type][domain.permissionType], Expr.Ident(v)));
+    }
+
+    public IEnumerable<Expr> PermissionExprs(LinearDomain domain, IEnumerable<Expr> availableExprs)
+    {
+      return availableExprs
+        .Where(expr => collectors.ContainsKey(expr.Type) && collectors[expr.Type].ContainsKey(domain.permissionType))
+        .Select(expr => ExprHelper.FunctionCall(collectors[expr.Type][domain.permissionType], expr));
+    }
+
     public IEnumerable<Expr> DisjointnessExprForEachDomain(IEnumerable<Variable> scope)
     {
-      Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
-      foreach (var domainName in linearDomains.Keys)
-      {
-        domainNameToScope[domainName] = new HashSet<Variable>();
-      }
-
-      foreach (Variable v in scope)
-      {
-        var domainName = FindDomainName(v);
-        if (domainName == null)
-        {
-          continue;
-        }
-
-        domainNameToScope[domainName].Add(v);
-      }
-
-      foreach (string domainName in domainNameToScope.Keys)
-      {
-        yield return DisjointnessExprForPermissions(
-          domainName,
-          PermissionExprForEachVariable(domainName, domainNameToScope[domainName]));
-      }
+      return LinearDomains.Select(domain => DisjointnessExprForPermissions(domain, PermissionExprs(domain, scope)));
     }
 
-    public IEnumerable<Expr> PermissionExprForEachVariable(string domainName, IEnumerable<Variable> scope)
-    {
-      var domain = linearDomains[domainName];
-      foreach (Variable v in scope)
-      {
-        Expr expr = ExprHelper.FunctionCall(domain.collectors[v.TypedIdent.Type], Expr.Ident(v));
-        expr.Resolve(new ResolutionContext(null));
-        expr.Typecheck(new TypecheckingContext(null));
-        yield return expr;
-      }
-    }
-
-    public Expr DisjointnessExprForPermissions(string domainName, IEnumerable<Expr> permissionsExprs)
+    public Expr DisjointnessExprForPermissions(LinearDomain domain, IEnumerable<Expr> permissionsExprs)
     {
       Expr expr = Expr.True;
       if (permissionsExprs.Count() > 1)
       {
         int count = 0;
         List<Expr> subsetExprs = new List<Expr>();
-        LinearDomain domain = linearDomains[domainName];
-        BoundVariable partition = civlTypeChecker.BoundVariable($"partition_{domainName}", domain.mapTypeInt);
+        BoundVariable partition = civlTypeChecker.BoundVariable($"partition_{domain.permissionType}", domain.mapTypeInt);
         foreach (Expr e in permissionsExprs)
         {
           subsetExprs.Add(SubsetExpr(domain, e, partition, count));
           count++;
         }
-
         expr = ExprHelper.ExistsExpr(new List<Variable> {partition}, Expr.And(subsetExprs));
       }
-
-      expr.Resolve(new ResolutionContext(null));
-      expr.Typecheck(new TypecheckingContext(null));
       return expr;
     }
 
-    public Expr UnionExprForPermissions(string domainName, IEnumerable<Expr> permissionExprs)
+    public IEnumerable<Expr> MapWellFormedExpressions(IEnumerable<Variable> scope)
     {
-      var domain = linearDomains[domainName];
+      var monomorphizer = civlTypeChecker.program.monomorphizer;
+      if (monomorphizer == null)
+      {
+        return Enumerable.Empty<Expr>();
+      }
+      return scope.Where(v =>
+        {
+          if (v.TypedIdent.Type is not CtorType ctorType)
+          {
+            return false;
+          }
+          var declName = Monomorphizer.GetOriginalDecl(ctorType.Decl).Name;
+          if (declName is "Map")
+          {
+            return true;
+          }
+          return false;
+        }).Select(v =>
+        {
+          var ctorType = (CtorType)v.TypedIdent.Type;
+          var declName = Monomorphizer.GetOriginalDecl(ctorType.Decl).Name;
+          var func = MapWellFormedFunction(monomorphizer, ctorType.Decl);
+          return ExprHelper.FunctionCall(func, Expr.Ident(v));
+        });
+    }
+    
+    public Expr UnionExprForPermissions(LinearDomain domain, IEnumerable<Expr> permissionExprs)
+    {
       var expr = ExprHelper.FunctionCall(domain.mapConstBool, Expr.False);
       foreach (Expr e in permissionExprs)
       {
         expr = ExprHelper.FunctionCall(domain.mapOr, e, expr);
       }
-
-      expr.Resolve(new ResolutionContext(null));
-      expr.Typecheck(new TypecheckingContext(null));
       return expr;
     }
 
+    public Expr SubsetExprForPermissions(LinearDomain domain, Expr lhs, Expr rhs)
+    {
+      return Expr.Eq(ExprHelper.FunctionCall(domain.mapImp, lhs, rhs), ExprHelper.FunctionCall(domain.mapConstBool, Expr.True));
+    }
+
+    private IEnumerable<Variable> FilterVariables(LinearDomain domain, IEnumerable<Variable> scope)
+    {
+      return scope.Where(v => 
+        FindLinearKind(v) != LinearKind.ORDINARY &&
+        AreKeysCollected(v) &&
+        collectors.ContainsKey(v.TypedIdent.Type) &&
+        collectors[v.TypedIdent.Type].ContainsKey(domain.permissionType));
+    }
+    
     private Expr SubsetExpr(LinearDomain domain, Expr ie, Variable partition, int partitionCount)
     {
       Expr e = ExprHelper.FunctionCall(domain.mapConstInt, Expr.Literal(partitionCount));
@@ -997,253 +1068,17 @@ namespace Microsoft.Boogie
       return e;
     }
 
-    #endregion
-
-    #region Linearity Invariant Checker
-
-    public static void AddCheckers(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
+    private Function MapWellFormedFunction(Monomorphizer monomorphizer, TypeCtorDecl typeCtorDecl)
     {
-      foreach (var action in Enumerable.Concat<Action>(civlTypeChecker.procToAtomicAction.Values,
-        civlTypeChecker.procToIntroductionAction.Values))
-      {
-        AddChecker(civlTypeChecker, action, decls);
-      }
+      var typeInstantiation = monomorphizer.GetTypeInstantiation(typeCtorDecl);
+      var typeParamInstantiationMap = new Dictionary<string, Type>() { { "T", typeInstantiation[0] }, { "U", typeInstantiation[1] } };
+      return monomorphizer.InstantiateFunction("Map_WellFormed", typeParamInstantiationMap);
     }
 
-    private static LinearKind[] InKinds = {LinearKind.LINEAR, LinearKind.LINEAR_IN};
-    private static LinearKind[] OutKinds = {LinearKind.LINEAR, LinearKind.LINEAR_OUT};
-
-    private class LinearityCheck
+    public ActionDecl GetActionDeclFromCreateAsyncs(CallCmd callCmd)
     {
-      public string domainName;
-      public Expr assume;
-      public Expr assert;
-      public string message;
-      public string checkName;
-
-      public LinearityCheck(string domainName, Expr assume, Expr assert, string message, string checkName)
-      {
-        this.domainName = domainName;
-        this.assume = assume;
-        this.assert = assert;
-        this.message = message;
-        this.checkName = checkName;
-      }
-    }
-
-    private static void AddChecker(CivlTypeChecker civlTypeChecker, Action action, List<Declaration> decls)
-    {
-      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      // Note: The implementation should be used as the variables in the
-      //       gate are bound to implementation and not to the procedure.
-      Implementation impl = action.impl;
-      List<Variable> inputs = impl.InParams;
-      List<Variable> outputs = impl.OutParams;
-
-      List<Variable> locals = new List<Variable>(2);
-      var paLocal1 = civlTypeChecker.LocalVariable("pa1", civlTypeChecker.pendingAsyncType);
-      var paLocal2 = civlTypeChecker.LocalVariable("pa2", civlTypeChecker.pendingAsyncType);
-      var pa1 = Expr.Ident(paLocal1);
-      var pa2 = Expr.Ident(paLocal2);
-      
-      if (civlTypeChecker.pendingAsyncType != null)
-      {
-        locals.Add(paLocal1);
-        locals.Add(paLocal2);
-      }
-
-      List<Requires> requires = action.gate.Select(a => new Requires(false, a.Expr)).ToList();
-      List<LinearityCheck> linearityChecks = new List<LinearityCheck>();
-
-      foreach (var domain in linearTypeChecker.linearDomains.Values)
-      {
-        // Linear in vars
-        var inVars = inputs.Union(action.modifiedGlobalVars)
-          .Where(x => linearTypeChecker.FindDomainName(x) == domain.domainName)
-          .Where(x => InKinds.Contains(linearTypeChecker.FindLinearKind(x)))
-          .Select(Expr.Ident)
-          .ToList();
-        
-        // Linear out vars
-        var outVars = inputs.Union(outputs).Union(action.modifiedGlobalVars)
-          .Where(x => linearTypeChecker.FindDomainName(x) == domain.domainName)
-          .Where(x => OutKinds.Contains(linearTypeChecker.FindLinearKind(x)))
-          .Select(Expr.Ident)
-          .ToList();
-
-        // First kind
-        // Permissions in linear output variables are a subset of permissions in linear input variables.
-        if (outVars.Count > 0)
-        {
-          linearityChecks.Add(new LinearityCheck(
-            domain.domainName,
-            null,
-            OutPermsSubsetInPerms(domain, inVars, outVars),
-            $"Potential linearity violation in outputs for domain {domain.domainName}.",
-            "variables"));
-        }
-
-        if (action is AtomicAction atomicAction && atomicAction.HasPendingAsyncs)
-        {
-          var PAs = Expr.Ident(atomicAction.impl.OutParams.Last());
-          
-          foreach (var pendingAsync in atomicAction.pendingAsyncs)
-          {
-            var pendingAsyncLinearParams = PendingAsyncLinearParams(linearTypeChecker, domain, pendingAsync, pa1);
-
-            if (pendingAsyncLinearParams.Count == 0)
-            {
-              continue;
-            }
-
-            // Second kind
-            // Permissions in linear output variables + linear inputs of a single pending async
-            // are a subset of permissions in linear input variables.
-            var exactlyOnePA = Expr.And(
-              ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor.membership, pa1),
-              Expr.Eq(Expr.Select(PAs, pa1), Expr.Literal(1)));
-            var outSubsetInExpr = OutPermsSubsetInPerms(domain, inVars, pendingAsyncLinearParams.Union(outVars));
-            linearityChecks.Add(new LinearityCheck(
-              domain.domainName,
-              exactlyOnePA,
-              outSubsetInExpr,
-              $"Potential linearity violation in outputs and pending async of {pendingAsync.proc.Name} for domain {domain.domainName}.",
-              $"single_{pendingAsync.proc.Name}"));
-
-            // Third kind
-            // If there are two identical pending asyncs, then their input permissions mut be empty.
-            var twoIdenticalPAs = Expr.And(
-              ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor.membership, pa1),
-              Expr.Ge(Expr.Select(PAs, pa1), Expr.Literal(2)));
-            var emptyPerms = OutPermsSubsetInPerms(domain, Enumerable.Empty<Expr>(), pendingAsyncLinearParams);
-            linearityChecks.Add(new LinearityCheck(
-              domain.domainName,
-              twoIdenticalPAs,
-              emptyPerms,
-              $"Potential linearity violation in identical pending asyncs of {pendingAsync.proc.Name} for domain {domain.domainName}.",
-              $"identical_{pendingAsync.proc.Name}"));
-          }
-
-          var pendingAsyncs = atomicAction.pendingAsyncs.ToList();
-          for (int i = 0; i < pendingAsyncs.Count; i++)
-          {
-            var pendingAsync1 = pendingAsyncs[i];
-            for (int j = i; j < pendingAsyncs.Count; j++)
-            {
-              var pendingAsync2 = pendingAsyncs[j];
-
-              var pendingAsyncLinearParams1 = PendingAsyncLinearParams(linearTypeChecker, domain, pendingAsync1, pa1);
-              var pendingAsyncLinearParams2 = PendingAsyncLinearParams(linearTypeChecker, domain, pendingAsync2, pa2);
-              
-              if (pendingAsyncLinearParams1.Count == 0 || pendingAsyncLinearParams2.Count == 0)
-              {
-                continue;
-              }
-
-              // Fourth kind
-              // Input permissions of two non-identical pending asyncs (possibly of the same action)
-              // are a subset of permissions in linear input variables.
-              var membership = Expr.And(
-                Expr.Neq(pa1, pa2),
-                Expr.And(
-                  ExprHelper.FunctionCall(pendingAsync1.pendingAsyncCtor.membership, pa1),
-                  ExprHelper.FunctionCall(pendingAsync2.pendingAsyncCtor.membership, pa2)));
-
-              var existing = Expr.And(
-                Expr.Ge(Expr.Select(PAs, pa1), Expr.Literal(1)),
-                Expr.Ge(Expr.Select(PAs, pa2), Expr.Literal(1)));
-
-              var noDuplication = OutPermsSubsetInPerms(domain, inVars, pendingAsyncLinearParams1.Union(pendingAsyncLinearParams2));
-
-              linearityChecks.Add(new LinearityCheck(
-                domain.domainName,
-                Expr.And(membership, existing),
-                noDuplication,
-                $"Potential lnearity violation in pending asyncs of {pendingAsync1.proc.Name} and {pendingAsync2.proc.Name} for domain {domain.domainName}.",
-                $"distinct_{pendingAsync1.proc.Name}_{pendingAsync2.proc.Name}"));
-            }
-          }
-        }
-      }
-
-      if (linearityChecks.Count == 0)
-      {
-        return;
-      }
-
-      // Create checker blocks
-      List<Block> checkerBlocks = new List<Block>(linearityChecks.Count);
-      foreach (var lc in linearityChecks)
-      {
-        List<Cmd> cmds = new List<Cmd>(2);
-        if (lc.assume != null)
-        {
-          cmds.Add(CmdHelper.AssumeCmd(lc.assume));
-        }
-        cmds.Add(CmdHelper.AssertCmd(action.proc.tok, lc.assert, lc.message));
-        var block = BlockHelper.Block($"{lc.domainName}_{lc.checkName}", cmds);
-        CivlUtil.ResolveAndTypecheck(block, ResolutionContext.State.Two);
-        checkerBlocks.Add(block);
-      }
-      
-      // Create init blocks
-      List<Block> blocks = new List<Block>(linearityChecks.Count + 1);
-      blocks.Add(
-        BlockHelper.Block(
-          "init",
-          new List<Cmd> { CmdHelper.CallCmd(action.proc, inputs, outputs) },
-          checkerBlocks));
-      blocks.AddRange(checkerBlocks);
-
-      // Create the whole check procedure
-      string checkerName = civlTypeChecker.AddNamePrefix($"LinearityChecker_{action.proc.Name}");
-      Procedure linCheckerProc = DeclHelper.Procedure(checkerName,
-        inputs, outputs, requires, action.proc.Modifies, new List<Ensures>());
-      Implementation linCheckImpl = DeclHelper.Implementation(linCheckerProc,
-        inputs, outputs, locals, blocks);
-      decls.Add(linCheckImpl);
-      decls.Add(linCheckerProc);
-    }
-
-    private static List<Expr> PendingAsyncLinearParams(LinearTypeChecker linearTypeChecker, LinearDomain domain, AtomicAction pendingAsync, IdentifierExpr pa)
-    {
-      var pendingAsyncLinearParams = new List<Expr>();
-
-      for (int i = 0; i < pendingAsync.proc.InParams.Count; i++)
-      {
-        var inParam = pendingAsync.proc.InParams[i];
-        if (linearTypeChecker.FindDomainName(inParam) == domain.domainName && InKinds.Contains(linearTypeChecker.FindLinearKind(inParam)))
-        {
-          var pendingAsyncParam = ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor.selectors[i], pa);
-          pendingAsyncLinearParams.Add(pendingAsyncParam);
-        }
-      }
-
-      return pendingAsyncLinearParams;
-    }
-
-    private static Expr OutPermsSubsetInPerms(LinearDomain domain, IEnumerable<Expr> ins, IEnumerable<Expr> outs)
-    {
-      Expr inMultiset = ExprHelper.Old(PermissionMultiset(domain, ins));
-      Expr outMultiset = PermissionMultiset(domain, outs);
-      Expr subsetExpr = ExprHelper.FunctionCall(domain.mapLe, outMultiset, inMultiset);
-      return Expr.Eq(subsetExpr, ExprHelper.FunctionCall(domain.mapConstBool, Expr.True));
-    }
-
-    private static Expr PermissionMultiset(LinearDomain domain, IEnumerable<Expr> exprs)
-    {
-      var terms = exprs.Select(x =>
-        ExprHelper.FunctionCall(domain.mapIteInt,
-          ExprHelper.FunctionCall(domain.collectors[x.Type], x),
-          domain.MapConstInt(1),
-          domain.MapConstInt(0))).ToList<Expr>();
-
-      if (terms.Count == 0)
-      {
-        return domain.MapConstInt(0);
-      }
-
-      return terms.Aggregate((x, y) => ExprHelper.FunctionCall(domain.mapAdd, x, y));
+      var pendingAsyncType = civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
+      return pendingAsyncTypeToActionDecl[pendingAsyncType];
     }
 
     #endregion
@@ -1283,5 +1118,49 @@ namespace Microsoft.Boogie
     }
 
     #endregion
+  }
+
+  public class LinearStoreVisitor : ReadOnlyVisitor
+  {
+    private bool hasLinearStoreAccess = false;
+
+    public static bool HasLinearStoreAccess(Expr expr)
+    {
+      var heapLookupVisitor = new LinearStoreVisitor();
+      heapLookupVisitor.Visit(expr);
+      return heapLookupVisitor.hasLinearStoreAccess;
+    }
+
+    public static bool HasLinearStoreAccess(AssignLhs assignLhs)
+    {
+      var heapLookupVisitor = new LinearStoreVisitor();
+      heapLookupVisitor.Visit(assignLhs);
+      return heapLookupVisitor.hasLinearStoreAccess;
+    }
+
+    public override Expr VisitIdentifierExpr(IdentifierExpr node)
+    {
+      CheckType(node.Type);
+      return base.VisitIdentifierExpr(node);
+    }
+
+    public override Expr VisitNAryExpr(NAryExpr node)
+    {
+      CheckType(node.Type);
+      return base.VisitNAryExpr(node);
+    }
+
+    private void CheckType(Type type)
+    {
+      if (type is not CtorType ctorType)
+      {
+        return;
+      }
+      var typeCtorDeclName = Monomorphizer.GetOriginalDecl(ctorType.Decl).Name;
+      if (typeCtorDeclName == "Map")
+      {
+        hasLinearStoreAccess = true;
+      }
+    }
   }
 }

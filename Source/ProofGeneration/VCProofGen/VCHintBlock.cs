@@ -14,7 +14,7 @@ namespace ProofGeneration.VCProofGen
 
         public VCHintBlock(Block block)
         {
-            cmds = block.cmds.ToArray();
+            cmds = block.Cmds.ToArray();
             nextCmd = cmds.Length - 1;
             _hints = new VCHint[cmds.Length];
             OuterDecls = new List<OuterDecl>();

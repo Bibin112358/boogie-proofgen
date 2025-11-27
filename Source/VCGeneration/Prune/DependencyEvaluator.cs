@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Microsoft.Boogie
 {
@@ -10,7 +9,7 @@ namespace Microsoft.Boogie
     // Most incoming dependents correspond to exactly one function or constant, but some of them are tuples.
     // For example, consider an axiom of the form:
     //                        axiom forall x, y :: {P(x, y), Q(y)} {R(x)} P(x, y) ==> R(x)
-    // The axiom may (only) be triggerd by a declaration/implementation that either mentions
+    // The axiom may (only) be triggered by a declaration/implementation that either mentions
     // both P and Q or mentions function R.
     // Thus, it has two incoming dependents:
     // 1) the tuple (P, Q) and 2) the function R. I store tuples in the variable incomingTuples.
@@ -21,20 +20,20 @@ namespace Microsoft.Boogie
     // with some incoming dependent of B (see method depends).
 
     public readonly Declaration declaration; // a node could either be a function or an axiom.
-    public readonly HashSet<Declaration> outgoing = new(); // an edge can either be a function or a constant.
+    public HashSet<Declaration> Outgoing { get; } = new();
     public List<Declaration[]> incomingSets = new();
-    public HashSet<Type> types = new();
+    protected HashSet<Type> types = new();
 
     protected void AddIncoming(Declaration newIncoming)
     {
-      if (QKeyValue.FindBoolAttribute(declaration.Attributes, "include_dep")) {
+      if (declaration.Attributes.FindBoolAttribute("include_dep")) {
         incomingSets.Add(new[] { newIncoming });
       }
     }
 
     protected void AddOutgoing(Declaration newOutgoing)
     {
-      outgoing.Add(newOutgoing);
+      Outgoing.Add(newOutgoing);
     }
 
     protected void AddIncoming(Declaration[] declarations)

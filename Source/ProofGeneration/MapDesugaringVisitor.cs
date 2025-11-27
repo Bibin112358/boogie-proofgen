@@ -38,7 +38,7 @@ namespace ProofGeneration
                 p.AddTopLevelDeclaration(f);
             }
             
-            int tcErrorCount = desugaredProg.Typecheck();
+            int tcErrorCount = desugaredProg.Typecheck(ProofGenerationOptions.Clo);
             if (tcErrorCount != 0)
             {
                 throw new Exception("Type check failed after desugaring program");
@@ -84,7 +84,7 @@ namespace ProofGeneration
 
         public override MapType VisitMapType(MapType node)
         {
-            throw new cce.UnreachableException();
+            throw new Cce.UnreachableException();
         }
         
         /// <summary>
@@ -101,7 +101,7 @@ namespace ProofGeneration
                 return _mapAbstractionBuilder.RawType(ctorType.Decl);
             } 
             
-            throw new cce.UnreachableException();
+            throw new Cce.UnreachableException();
         }
         
         public override Cmd VisitAssignCmd(AssignCmd node)

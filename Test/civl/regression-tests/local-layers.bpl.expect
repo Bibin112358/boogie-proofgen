@@ -1,0 +1,3 @@
+local-layers.bpl(9,15): Error: variable not available across layers in [0, 5]: x
+local-layers.bpl(10,11): Error: variable not available across layers in [0, 5]: x
+2 type checking errors detected in local-layers.bpl

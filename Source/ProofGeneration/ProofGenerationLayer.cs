@@ -90,7 +90,7 @@ namespace ProofGeneration
 
         private static MembershipLemmaConfig MembershipLemmaConfig()
         {
-          switch (CommandLineOptions.Clo.GenerateIsaProgNoProofs)
+          switch (ProofGenerationOptions.Clo.GenerateIsaProgNoProofs)
           {
             case 0: return new MembershipLemmaConfig(true, true, true);
             // axiom membership lemmas are required only if proofs are generated for the Boogie program
@@ -149,7 +149,7 @@ namespace ProofGeneration
           IList<BigBlock> ast = proofGenInfo.GetBigBlocks();
           foreach (var b in ast)
           {
-            if (b.ec is BreakCmd || b.tc is GotoCmd || (b.ec is IfCmd bIf && bIf.elseIf != null))
+            if (b.ec is BreakCmd || b.tc is GotoCmd || (b.ec is IfCmd bIf && bIf.ElseIf != null))
             {
               return true;
             }
@@ -169,8 +169,8 @@ namespace ProofGeneration
 
             if (bb.ec is IfCmd ifcmd)
             {
-              checkForGotos(ifcmd.thn);
-              checkForGotos(ifcmd.elseBlock);
+              checkForGotos(ifcmd.Thn);
+              checkForGotos(ifcmd.ElseBlock);
             }
             else if (bb.ec is WhileCmd whilecmd)
             {
@@ -234,7 +234,7 @@ namespace ProofGeneration
         /// </summary>
         public static void BeforePassification(Implementation impl)
         {
-            if (CommandLineOptions.Clo.OnlyGenerateInitialProgramIsa())
+            if (ProofGenerationOptions.Clo.OnlyGenerateInitialProgramIsa())
                 return;
             
             var config = new CFGReprConfigBuilder().SetIsAcyclic(true).SetBlockCopy(true).SetDesugarCalls(true)
@@ -272,7 +272,7 @@ namespace ProofGeneration
             /* procedures and implementations do not use the same objects for the variables in the spec --> need to sync 
              * for pre- and postcondition
              */
-            var formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap());
+            var formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap(ProofGenerationOptions.Clo));
             var preconditions = new List<Tuple<Expr,bool>>();
             foreach (var req in impl.Proc.Requires)
             {
@@ -308,7 +308,7 @@ namespace ProofGeneration
         {
             Contract.Requires(b != null);
             Contract.Requires(variableToExpr != null);
-            if (CommandLineOptions.Clo.OnlyGenerateInitialProgramIsa())
+            if (ProofGenerationOptions.Clo.OnlyGenerateInitialProgramIsa())
                 return;
             
             initialVarMapping.Add(b, new Dictionary<Variable, Expr>(variableToExpr));
@@ -338,7 +338,7 @@ namespace ProofGeneration
         public static void AfterPassificationCheckGlobalMap(Implementation impl)
         {
             afterPassificationImpl = impl;
-            if (CommandLineOptions.Clo.OnlyGenerateInitialProgramIsa())
+            if (ProofGenerationOptions.Clo.OnlyGenerateInitialProgramIsa())
                 return;
             
             finalProgData = MethodDataFromImpl(impl, boogieGlobalData);
@@ -405,7 +405,7 @@ namespace ProofGeneration
         /// </summary>
         public static void AfterUnreachablePruning(Implementation impl)
         {
-            if (CommandLineOptions.Clo.OnlyGenerateInitialProgramIsa())
+            if (ProofGenerationOptions.Clo.OnlyGenerateInitialProgramIsa())
                 return;
             
             var config = new CFGReprConfigBuilder().SetIsAcyclic(true).SetBlockCopy(true).SetDesugarCalls(false)
@@ -431,10 +431,10 @@ namespace ProofGeneration
             VCExpr exprVC,
             VCExpr postVC,
             VCExpr resultVC,
-            CommandLineOptions.SubsumptionOption subsumptionOption
+            ProofGenerationOptions.SubsumptionOption subsumptionOption
         )
         {
-            if (CommandLineOptions.Clo.OnlyGenerateInitialProgramIsa())
+            if (ProofGenerationOptions.Clo.OnlyGenerateInitialProgramIsa())
                 return;
             vcHintManager.NextHintForBlock(cmd, block, exprVC, postVC, resultVC, subsumptionOption);
         }
@@ -445,7 +445,7 @@ namespace ProofGeneration
         /// </summary>
         public static void VcIsTrivial()
         {
-            if (CommandLineOptions.Clo.OnlyGenerateInitialProgramIsa())
+            if (ProofGenerationOptions.Clo.OnlyGenerateInitialProgramIsa())
                 return;
           vcHintManager.TransformHintsToTrivialVc();
         }
@@ -457,7 +457,7 @@ namespace ProofGeneration
         /// </summary>
         public static void NextPassificationHint(Block block, Cmd cmd, Variable origVar, Expr passiveExpr)
         {
-            if (CommandLineOptions.Clo.OnlyGenerateInitialProgramIsa())
+            if (ProofGenerationOptions.Clo.OnlyGenerateInitialProgramIsa())
                 return;
             passificationHintManager.AddHint(block, cmd, origVar, passiveExpr);
         }
@@ -468,7 +468,7 @@ namespace ProofGeneration
         /// </summary>
         public static void LoopHeadHint(Block block, IEnumerable<Variable> varsToHavoc, IEnumerable<Expr> invariants)
         {
-            if (CommandLineOptions.Clo.OnlyGenerateInitialProgramIsa())
+            if (ProofGenerationOptions.Clo.OnlyGenerateInitialProgramIsa())
                 return;
             cfgToDagHintManager.AddHint(block, new LoopHeadHint(varsToHavoc, invariants));
         }
@@ -479,7 +479,7 @@ namespace ProofGeneration
         /// </summary>
         public static void NewBackedgeBlock(Block oldBackedgeBlock, Block newBackedgeBlock, Block loopHead)
         {
-            if (CommandLineOptions.Clo.OnlyGenerateInitialProgramIsa())
+            if (ProofGenerationOptions.Clo.OnlyGenerateInitialProgramIsa())
                 return;
             cfgToDagHintManager.AddNewBackedgeBlock(newBackedgeBlock, loopHead);
         }
@@ -490,14 +490,14 @@ namespace ProofGeneration
         /// </summary>
         public static void NewPreLoopEntryBlock(Block oldPreLoopEntryBlock, Block newPreLoopEntryBlock, Block loopHead)
         {
-            if (CommandLineOptions.Clo.OnlyGenerateInitialProgramIsa())
+            if (ProofGenerationOptions.Clo.OnlyGenerateInitialProgramIsa())
                 return;
             cfgToDagHintManager.AddNewPreLoopEntryBlock(newPreLoopEntryBlock, loopHead);
         }
 
         public static void SetTypeEraserFactory(TypePremiseEraserFactory factory)
         {
-            if (CommandLineOptions.Clo.OnlyGenerateInitialProgramIsa())
+            if (ProofGenerationOptions.Clo.OnlyGenerateInitialProgramIsa())
                 return;
             typePremiseEraserFactory = factory;
             var uniqueNamer = new IsaUniqueNamer();
@@ -525,7 +525,7 @@ namespace ProofGeneration
 
             if (cmd is SugaredCmd sugaredCmd)
             {
-              var stateCmd = sugaredCmd.Desugaring as StateCmd;
+              var stateCmd = sugaredCmd.GetDesugaring(ProofGenerationOptions.Clo) as StateCmd;
               if (stateCmd != null)
               {
                 newVarsFromDesugaring.AddRange(stateCmd.Locals);
@@ -546,12 +546,12 @@ namespace ProofGeneration
 
           if (b.ec is IfCmd ifCmd)
           {
-            foreach (var then_bb in ifCmd.thn.BigBlocks)
+            foreach (var then_bb in ifCmd.Thn.BigBlocks)
             {
               DesugarCmdsInBigBlock(then_bb);
             }
 
-            foreach (var else_bb in ifCmd.elseBlock.BigBlocks)
+            foreach (var else_bb in ifCmd.ElseBlock.BigBlocks)
             {
               DesugarCmdsInBigBlock(else_bb);
             }
@@ -612,7 +612,7 @@ namespace ProofGeneration
 
             BoogieMethodData beforeOptimizationsData;
 
-            if (CommandLineOptions.Clo.OnlyGenerateInitialProgramIsa()) 
+            if (ProofGenerationOptions.Clo.OnlyGenerateInitialProgramIsa())
             {
               beforeOptimizationsData = MethodDataFromImpl(
                 afterPassificationImpl,
@@ -665,13 +665,13 @@ namespace ProofGeneration
             
               //Hack: specs config used to distinguish between all (free + checks) (--> expression tuples) or just checked (no tuples)
             var specsConfigDefault = 
-              CommandLineOptions.Clo.OnlyGenerateInitialProgramIsa()
+              ProofGenerationOptions.Clo.OnlyGenerateInitialProgramIsa()
               ? SpecsConfig.All
               : SpecsConfig.AllPreCheckedPost;
 
             var membershipLemmaConfig = MembershipLemmaConfig();
 
-            if (_proofGenConfig.GenerateBeforeAstCfgProg || CommandLineOptions.Clo.OnlyGenerateInitialProgramIsa())
+            if (_proofGenConfig.GenerateBeforeAstCfgProg || ProofGenerationOptions.Clo.OnlyGenerateInitialProgramIsa())
             {
               #region before ast to cfg program
 
@@ -709,7 +709,7 @@ namespace ProofGeneration
                 programDeclsBeforeAstToCfg);
               theories.Add(beforeAstToCfgProgTheory);
               
-              if(CommandLineOptions.Clo.OnlyGenerateInitialProgramIsa())
+              if(ProofGenerationOptions.Clo.OnlyGenerateInitialProgramIsa())
               {
                 StoreResult(uniqueNamer.GetName(afterPassificationImpl.Proc.Name), theories);
                 return;
@@ -1247,7 +1247,7 @@ namespace ProofGeneration
           foreach (var block in unoptimizedCFGBlocks)
           {
             var curOutgoing = new List<Block>();
-            if (block.TransferCmd is GotoCmd gotoCmd) curOutgoing.AddRange(gotoCmd.labelTargets);
+            if (block.TransferCmd is GotoCmd gotoCmd) curOutgoing.AddRange(gotoCmd.LabelTargets);
             outgoingBlocks.Add(block, curOutgoing);
           }
 

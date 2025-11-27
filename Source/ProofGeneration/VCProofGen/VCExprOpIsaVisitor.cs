@@ -86,6 +86,16 @@ namespace ProofGeneration.VCProofGen
             throw new NotImplementedException();
         }
 
+        public Term VisitFieldAccessOp(VCExprNAry node, List<Term> arg)
+        {
+          throw new NotImplementedException();
+        }
+
+        public Term VisitIsConstructorOp(VCExprNAry node, List<Term> arg)
+        {
+          throw new NotImplementedException();
+        }
+
         public Term VisitDivOp(VCExprNAry node, List<Term> arg)
         {
             Contract.Assert(arg.Count == 2);

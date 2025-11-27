@@ -92,6 +92,21 @@ namespace ProofGeneration
 
             return IsaBoogieTerm.CondExp(_args[0], _args[1], _args[2]);
         }
+
+        public Term Visit(FieldAccess fieldAccess)
+        {
+          throw new NotImplementedException();
+        }
+
+        public Term Visit(FieldUpdate fieldUpdate)
+        {
+          throw new NotImplementedException();
+        }
+
+        public Term Visit(IsConstructor isConstructor)
+        {
+          throw new NotImplementedException();
+        }
     }
 
     internal class ExprArgException : Exception

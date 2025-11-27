@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using System.Threading.Tasks;
 using Microsoft.Boogie;
 using NUnit.Framework;
 
@@ -15,7 +17,7 @@ public class RandomSeedTest
   axiom N <= 3;
 
   procedure nEquals3()
-  ensures true;
+  ensures 1 == 1;
   {
   }";
 
@@ -25,34 +27,34 @@ public class RandomSeedTest
   }
   
   [Test]
-  public void AttributeAndCommandLineOptionProduceSameResult()
+  public async Task AttributeAndCommandLineOptionProduceSameResult()
   {
-    var options = CommandLineOptions.FromArguments();
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
     options.RandomSeed = randomSeed;
-    var randomOptionsLogs = GetProverLogs.GetProverLogForProgram(options, program);
-    var randomAttributeLogs =
-      GetProverLogs.GetProverLogForProgram(CommandLineOptions.FromArguments(), GetProgramWithAttribute(randomSeed));
+    var randomOptionsLogs = await GetProverLogs.GetProverLogForProgram(options, program);
+    var randomAttributeLogs = await
+      GetProverLogs.GetProverLogForProgram(CommandLineOptions.FromArguments(TextWriter.Null), GetProgramWithAttribute(randomSeed));
     Assert.AreEqual(randomOptionsLogs, randomAttributeLogs);
   }
 
   [Test]
-  public void Z3RandomisationOptionsAreSet()
+  public async Task Z3RandomisationOptionsAreSet()
   {
-    var options = CommandLineOptions.FromArguments();
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
     options.RandomSeed = randomSeed;
-    var randomOptionsLogs = GetProverLogs.GetProverLogForProgram(options, program);
+    var randomOptionsLogs = await GetProverLogs.GetProverLogForProgram(options, program);
     Assert.IsTrue(randomOptionsLogs.Contains("(set-option :smt.random_seed 12312314)"));
     Assert.IsTrue(randomOptionsLogs.Contains("(set-option :sat.random_seed 12312314)"));
   } 
 
   [Test]
-  public void DeclarationOrderIsRandomised()
+  public async Task DeclarationOrderIsRandomised()
   {
-    var options = CommandLineOptions.FromArguments();
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
     options.NormalizeDeclarationOrder = false;
-    var noRandomLogs = GetProverLogs.GetProverLogForProgram(options, program);
+    var noRandomLogs = await GetProverLogs.GetProverLogForProgram(options, program);
     options.RandomSeed = 10000;
-    var randomOptionsLogs = GetProverLogs.GetProverLogForProgram(options, program);
+    var randomOptionsLogs = await GetProverLogs.GetProverLogForProgram(options, program);
     var assertN3 = "(assert (<= N 3)";
     var randomN3Index = randomOptionsLogs.IndexOf(assertN3, StringComparison.Ordinal)!;
     var noRandomN3Index = noRandomLogs.IndexOf(assertN3, StringComparison.Ordinal)!;
@@ -66,12 +68,12 @@ public class RandomSeedTest
   }
 
   [Test]
-  public void SomeVariablesAreRenamed()
+  public async Task SomeVariablesAreRenamed()
   {
-    var options = CommandLineOptions.FromArguments();
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
     options.RandomSeed = randomSeed;
     options.NormalizeNames = false;
-    var randomOptionsLogs = GetProverLogs.GetProverLogForProgram(options, program);
-    Assert.IsTrue(randomOptionsLogs.Contains("random2084218992"));
+    var randomOptionsLogs = await GetProverLogs.GetProverLogForProgram(options, program);
+    Assert.IsTrue(randomOptionsLogs.Contains("random506996257"));
   }
 }

@@ -100,8 +100,8 @@ namespace ProofGeneration.Passification
                             "Passification hints not in-sync");
                 };
 
-                using (var nonPassiveEnumerator = nonPassiveBlock.cmds.GetEnumerator())
-                using (var passiveEnumerator = passiveBlock.cmds.GetEnumerator())
+                using (var nonPassiveEnumerator = nonPassiveBlock.Cmds.GetEnumerator())
+                using (var passiveEnumerator = passiveBlock.Cmds.GetEnumerator())
                 {
                     while (nonPassiveEnumerator.MoveNext())
                     {

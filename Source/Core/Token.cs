@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 using System.Collections.Generic;
 using System.IO;
@@ -6,14 +7,18 @@ using System.Diagnostics.Contracts;
 namespace Microsoft.Boogie
 {
   [Immutable]
-  public interface IToken
+  public interface IToken : IComparable<IToken>
   {
+    /// <summary>
+    /// True if this token was created during parsing
+    /// </summary>
+    bool IsSourceToken { get; }
     int kind { get; set; } // token kind
     string filename { get; set; } // token file
     int pos { get; set; } // token position in the source text (starting at 0)
     int col { get; set; } // token column (starting at 0)
     int line { get; set; } // token line (starting at 1)
-    string /*!*/ val { get; set; } // token value
+    string val { get; set; } // token value
 
     bool IsValid { get; }
   }
@@ -27,13 +32,12 @@ namespace Microsoft.Boogie
     public int _col; // token column (starting at 1)
     public int _line; // token line (starting at 1)
 
-    public string /*!*/
+    public string
       _val; // token value
 
     public Token next; // ML 2005-03-11 Tokens are kept in linked list
 
-    public static readonly IToken /*!*/
-      NoToken = new Token();
+    public static readonly IToken NoToken = new Token();
 
     public Token()
     {
@@ -47,6 +51,8 @@ namespace Microsoft.Boogie
       this._col = colnum;
       this._val = "anything so that it is nonnull";
     }
+
+    public bool IsSourceToken => true;
 
     public int kind
     {
@@ -78,7 +84,7 @@ namespace Microsoft.Boogie
       set { this._line = value; }
     }
 
-    public string /*!*/ val
+    public string val
     {
       get { return this._val; }
       set { this._val = value; }
@@ -87,6 +93,18 @@ namespace Microsoft.Boogie
     public bool IsValid
     {
       get { return this._filename != null; }
+    }
+
+    public int CompareTo(IToken other) {
+      if (line != other.line) {
+        return line.CompareTo(other.line);
+      }
+      return col.CompareTo(other.col);
+    }
+
+    public override string ToString()
+    {
+      return $"({line}, {col})";
     }
   }
 }

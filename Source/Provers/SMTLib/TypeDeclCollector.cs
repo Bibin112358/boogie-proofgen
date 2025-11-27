@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics.Contracts;
@@ -13,8 +14,8 @@ namespace Microsoft.Boogie.SMTLib
     private readonly SMTLibOptions options;
     private UniqueNamer Namer;
 
-    private HashSet<Function /*!*/> /*!*/
-      RegisteredRelations = new HashSet<Function>();
+    private HashSet<Function>
+      RegisteredRelations = new();
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -38,48 +39,47 @@ namespace Microsoft.Boogie.SMTLib
     // not used
     protected override bool StandardResult(VCExpr node, bool arg)
     {
-      //Contract.Requires(node != null);
       return true;
     }
 
-    private readonly List<string /*!>!*/> AllDecls = new List<string /*!*/>();
-    private readonly List<string /*!>!*/> IncDecls = new List<string /*!*/>();
+    private readonly List<string /*!>!*/> AllDecls = new();
+    private readonly List<string /*!>!*/> IncDecls = new();
 
     // In order to support push/pop interface of the theorem prover, the "known" declarations
     // must be kept in a stack
 
-    private HashSet<Function /*!*/> /*!*/ KnownFunctions
+    private HashSet<Function> KnownFunctions
     {
       get { return _KnownFunctions.Peek(); }
     }
 
-    private HashSet<VCExprVar /*!*/> /*!*/ KnownVariables
+    private HashSet<VCExprVar> KnownVariables
     {
       get { return _KnownVariables.Peek(); }
     }
 
-    private HashSet<Type /*!*/> /*!*/ KnownTypes
+    private HashSet<Type> KnownTypes
     {
       get { return _KnownTypes.Peek(); }
     }
 
-    private HashSet<string /*!*/> /*!*/ KnownStoreFunctions
+    private HashSet<string> KnownStoreFunctions
     {
       get { return _KnownStoreFunctions.Peek(); }
     }
 
-    private HashSet<string /*!*/> /*!*/ KnownSelectFunctions
+    private HashSet<string> KnownSelectFunctions
     {
       get { return _KnownSelectFunctions.Peek(); }
     }
 
     // ------
-    private readonly Stack<HashSet<Function /*!*/> /*!*/> _KnownFunctions = new Stack<HashSet<Function /*!*/>>();
-    private readonly Stack<HashSet<VCExprVar /*!*/> /*!*/> _KnownVariables = new Stack<HashSet<VCExprVar /*!*/>>();
+    private readonly Stack<HashSet<Function>> _KnownFunctions = new();
+    private readonly Stack<HashSet<VCExprVar>> _KnownVariables = new();
 
-    private readonly Stack<HashSet<Type /*!*/> /*!*/> _KnownTypes = new Stack<HashSet<Type>>();
-    private readonly Stack<HashSet<string /*!*/> /*!*/> _KnownStoreFunctions = new Stack<HashSet<string>>();
-    private readonly Stack<HashSet<string /*!*/> /*!*/> _KnownSelectFunctions = new Stack<HashSet<string>>();
+    private readonly Stack<HashSet<Type>> _KnownTypes = new();
+    private readonly Stack<HashSet<string>> _KnownStoreFunctions = new();
+    private readonly Stack<HashSet<string>> _KnownSelectFunctions = new();
 
     private void InitializeKnownDecls()
     {
@@ -122,19 +122,14 @@ namespace Microsoft.Boogie.SMTLib
       _KnownSelectFunctions.Pop();
     }
 
-    public void SetNamer(UniqueNamer namer)
-    {
-      Namer = namer;
-    }
-
     public List<string /*!>!*/> AllDeclarations
     {
       get
       {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<List<string>>()));
+        Contract.Ensures(Cce.NonNullElements(Contract.Result<List<string>>()));
 
         List<string> /*!>!*/
-          res = new List<string /*!*/>();
+          res = new List<string>();
         res.AddRange(AllDecls);
         return res;
       }
@@ -142,9 +137,9 @@ namespace Microsoft.Boogie.SMTLib
 
     public List<string /*!>!*/> GetNewDeclarations()
     {
-      Contract.Ensures(cce.NonNullElements(Contract.Result<List<string>>()));
+      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<string>>()));
       List<string> /*!>!*/
-        res = new List<string /*!*/>();
+        res = new List<string>();
       res.AddRange(IncDecls);
       IncDecls.Clear();
       return res;
@@ -214,23 +209,28 @@ namespace Microsoft.Boogie.SMTLib
       else if (node.Op is VCExprSoftOp)
       {
         var exprVar = node[0] as VCExprVar;
-        AddDeclaration(string.Format("(declare-fun {0} () Bool)", exprVar.Name));
-        AddDeclaration(string.Format("(assert-soft {0} :weight {1})", exprVar.Name, ((VCExprSoftOp) node.Op).Weight));
+        string printedName = Namer.GetQuotedName(exprVar, exprVar.Name);
+        AddDeclaration(string.Format("(declare-fun {0} () Bool)", printedName));
+        AddDeclaration(string.Format("(assert-soft {0} :weight {1})", printedName, ((VCExprSoftOp) node.Op).Weight));
+        KnownVariables.Add(exprVar);
       }
-      else if (node.Op.Equals(VCExpressionGenerator.NamedAssumeOp))
+      else if (node.Op.Equals(VCExpressionGenerator.NamedAssumeOp) || node.Op.Equals(VCExpressionGenerator.NamedAssertOp))
       {
         var exprVar = node[0] as VCExprVar;
-        AddDeclaration(string.Format("(declare-fun {0} () Bool)", exprVar.Name));
-        if (options.PrintNecessaryAssumes)
+        string printedName = Namer.GetQuotedName(exprVar, exprVar.Name);
+        AddDeclaration(string.Format("(declare-fun {0} () Bool)", printedName));
+        if (options.TrackVerificationCoverage)
         {
-          AddDeclaration(string.Format("(assert (! {0} :named {1}))", exprVar.Name, "aux$$" + exprVar.Name));
+          AddDeclaration(string.Format("(assert (! {0} :named {1}))", printedName, "aux$$" + exprVar.Name));
         }
+
+        KnownVariables.Add(exprVar);
       }
       else
       {
         VCExprBoogieFunctionOp op = node.Op as VCExprBoogieFunctionOp;
         if (op != null &&
-            !(op.Func is DatatypeConstructor) && !(op.Func is DatatypeMembership) && !(op.Func is DatatypeSelector) &&
+            !(op.Func is DatatypeConstructor) &&
             !KnownFunctions.Contains(op.Func))
         {
           Function f = op.Func;
@@ -243,7 +243,7 @@ namespace Microsoft.Boogie.SMTLib
             Contract.Assert(printedName != null);
 
             Contract.Assert(f.OutParams.Count == 1);
-            var argTypes = f.InParams.Cast<Variable>().MapConcat(p => TypeToStringReg(p.TypedIdent.Type), " ");
+            var argTypes = string.Join(" ", f.InParams.Select(p => TypeToStringReg(p.TypedIdent.Type)));
             string decl;
             if (RegisteredRelations.Contains(op.Func))
             {
@@ -268,15 +268,14 @@ namespace Microsoft.Boogie.SMTLib
     public override bool Visit(VCExprVar node, bool arg)
     {
       Contract.Requires(node != null);
-      if (!BoundTermVars.Contains(node) && !KnownVariables.Contains(node))
+      if (!BoundTermVars.ContainsKey(node) && !KnownVariables.Contains(node))
       {
         string printedName = Namer.GetQuotedName(node, node.Name);
         Contract.Assert(printedName != null);
         RegisterType(node.Type);
         string decl =
           "(declare-fun " + printedName + " () " + TypeToString(node.Type) + ")";
-        if (!(printedName.StartsWith("assume$$") || printedName.StartsWith("soft$$") ||
-              printedName.StartsWith("try$$")))
+        if (node.VarKind == VCExprVarKind.Normal)
         {
           AddDeclaration(decl);
         }
@@ -307,7 +306,7 @@ namespace Microsoft.Boogie.SMTLib
         return;
       }
 
-      if (type.IsMap && options.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
+      if (type.IsMap && options.TypeEncodingMethod == CoreOptions.TypeEncoding.Monomorphic)
       {
         KnownTypes.Add(type);
         MapType mapType = type.AsMap;
@@ -321,7 +320,7 @@ namespace Microsoft.Boogie.SMTLib
 
         RegisterType(mapType.Result);
 
-        if (!options.UseArrayTheory)
+        if (!options.UseArrayTheory && mapType.Arguments.Count > 0)
         {
           AddDeclaration("(declare-sort " + TypeToString(type) + " 0)");
         }
@@ -352,7 +351,7 @@ namespace Microsoft.Boogie.SMTLib
         }
       }
 
-      if (options.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
+      if (options.TypeEncodingMethod == CoreOptions.TypeEncoding.Monomorphic)
       {
         AddDeclaration("(declare-sort " + TypeToString(type) + " 0)");
         KnownTypes.Add(type);
@@ -374,7 +373,7 @@ namespace Microsoft.Boogie.SMTLib
 
       if (!KnownSelectFunctions.Contains(name))
       {
-        string decl = "(declare-fun " + name + " (" + node.Arguments.MapConcat(n => TypeToString(n.Type), " ") + ") " +
+        string decl = "(declare-fun " + name + " (" + string.Join(" ", node.Arguments.Select(n => TypeToString(n.Type))) + ") " +
                       TypeToString(node.Type) + ")";
         AddDeclaration(decl);
         KnownSelectFunctions.Add(name);
@@ -395,11 +394,11 @@ namespace Microsoft.Boogie.SMTLib
 
       if (!KnownStoreFunctions.Contains(name))
       {
-        string decl = "(declare-fun " + name + " (" + node.Arguments.MapConcat(n => TypeToString(n.Type), " ") + ") " +
+        string decl = "(declare-fun " + name + " (" + string.Join(" ", node.Arguments.Select(n => TypeToString(n.Type))) + ") " +
                       TypeToString(node.Type) + ")";
         AddDeclaration(decl);
 
-        if (options.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
+        if (options.TypeEncodingMethod == CoreOptions.TypeEncoding.Monomorphic)
         {
           var sel = new SMTLibExprLineariser(options).SelectOpName(node);
           sel = Namer.GetQuotedName(sel, sel);
@@ -407,9 +406,10 @@ namespace Microsoft.Boogie.SMTLib
           if (!KnownSelectFunctions.Contains(sel))
           {
             // need to declare it before reference
-            var args = node.Arguments.SkipEnd(1);
+            var args = node.Arguments.SkipLast(1);
             var ret = node.Arguments.Last();
-            string seldecl = "(declare-fun " + sel + " (" + args.MapConcat(n => TypeToString(n.Type), " ") + ") " +
+            Func<VCExpr, string> s = n => TypeToString(n.Type);
+            string seldecl = "(declare-fun " + sel + " (" + string.Join(" ", args.Select(s)) + ") " +
                              TypeToString(ret.Type) + ")";
             AddDeclaration(seldecl);
             KnownSelectFunctions.Add(sel);

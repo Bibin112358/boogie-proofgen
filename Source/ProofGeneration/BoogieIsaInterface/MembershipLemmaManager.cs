@@ -550,7 +550,7 @@ namespace ProofGeneration.BoogieIsaInterface
         
         private string MembershipName(Func<string> normalNameFunc, string membershipPrefix, Term memberTerm)
         {
-          if (CommandLineOptions.Clo.UseIdBasedLemmaNaming && memberTerm is NatConst natConst)
+          if (ProofGenerationOptions.Clo.UseIdBasedLemmaNaming && memberTerm is NatConst natConst)
           {
             return membershipPrefix + natConst;
           }

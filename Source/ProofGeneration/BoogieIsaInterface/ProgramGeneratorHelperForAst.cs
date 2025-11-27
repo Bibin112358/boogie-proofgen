@@ -55,7 +55,7 @@ namespace ProofGeneration
           else if (b.tc is GotoCmd)
           {
             GotoCmd _goto = (GotoCmd) b.tc;
-            List<String> target_names = _goto.labelNames;
+            List<String> target_names = _goto.LabelNames;
             IList<Term> goto_arg_terms = new List<Term>();
             foreach (String target in target_names)
             {
@@ -111,7 +111,7 @@ namespace ProofGeneration
             guard_term = IsaCommonTerms.SomeOption(cmdIsaVisitor.TranslateSingle(guard));
           }
           
-          IList<BigBlock> then_branch = _if.thn.BigBlocks;
+          IList<BigBlock> then_branch = _if.Thn.BigBlocks;
           IList<Term> then_branch_bigblock_terms = new List<Term>();
           foreach (BigBlock bb in then_branch)
           {
@@ -133,7 +133,7 @@ namespace ProofGeneration
           }
           Term then_branch_term = new TermList(then_branch_bigblock_terms);
           
-          IList<BigBlock> else_branch = _if.elseBlock.BigBlocks;
+          IList<BigBlock> else_branch = _if.ElseBlock.BigBlocks;
           IList<Term> else_branch_bigblock_terms = new List<Term>();
           foreach (BigBlock bb in else_branch)
           {
@@ -248,7 +248,7 @@ namespace ProofGeneration
           correspondingBigBlockOrig = proofGenInfo.GetMappingCopyBigblockToOrigBigblock()[b];
         }
         
-        BigBlock successorBigBlockOrig = correspondingBigBlockOrig.successorBigBlock;
+        BigBlock successorBigBlockOrig = correspondingBigBlockOrig.SuccessorBigBlock;
         
         //if the big block has no successors of any kind, make a 'KStop' continuation.
         if (successorBigBlockOrig == null)
@@ -300,7 +300,7 @@ namespace ProofGeneration
 
           if (curr.ec is IfCmd ifcmd)
           {
-            if (InLoop(b, ifcmd.thn.BigBlocks) || (ifcmd.elseBlock != null) && InLoop(b, ifcmd.elseBlock.BigBlocks))
+            if (InLoop(b, ifcmd.Thn.BigBlocks) || (ifcmd.ElseBlock != null) && InLoop(b, ifcmd.ElseBlock.BigBlocks))
             {
               return true;
             }

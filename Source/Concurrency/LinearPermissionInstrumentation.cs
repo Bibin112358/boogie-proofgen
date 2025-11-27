@@ -9,20 +9,22 @@ namespace Microsoft.Boogie
     private CivlTypeChecker civlTypeChecker;
     private int layerNum;
     private AbsyMap absyMap;
-    private Dictionary<string, Variable> domainNameToHoleVar;
+    private Dictionary<LinearDomain, Variable> domainToHoleVar;
     private Dictionary<Variable, Variable> localVarMap;
+
+    private ConcurrencyOptions Options => civlTypeChecker.Options;
 
     public LinearPermissionInstrumentation(
       CivlTypeChecker civlTypeChecker,
       int layerNum,
       AbsyMap absyMap,
-      Dictionary<string, Variable> domainNameToHoleVar,
+      Dictionary<LinearDomain, Variable> domainToHoleVar,
       Dictionary<Variable, Variable> localVarMap)
     {
       this.civlTypeChecker = civlTypeChecker;
       this.layerNum = layerNum;
       this.absyMap = absyMap;
-      this.domainNameToHoleVar = domainNameToHoleVar;
+      this.domainToHoleVar = domainToHoleVar;
       this.localVarMap = localVarMap;
     }
 
@@ -34,127 +36,79 @@ namespace Microsoft.Boogie
       this.civlTypeChecker = civlTypeChecker;
       this.layerNum = layerNum;
       this.absyMap = absyMap;
-      this.domainNameToHoleVar = new Dictionary<string, Variable>();
+      this.domainToHoleVar = new Dictionary<LinearDomain, Variable>();
       this.localVarMap = new Dictionary<Variable, Variable>();
     }
 
-    public List<Cmd> ProcDisjointnessAssumeCmds(Procedure proc, bool atEntry)
+    public List<Cmd> ProcDisjointnessAndWellFormedAssumeCmds(Procedure proc, bool atEntry)
     {
       IEnumerable<Variable> availableVars = atEntry
         ? FilterInParams(proc.InParams)
         : FilterInOutParams(proc.InParams.Union(proc.OutParams));
-      return DisjointnessExprs(availableVars).Select(expr => CmdHelper.AssumeCmd(expr)).ToList<Cmd>();
+      return DisjointnessExprs(availableVars)
+        .Union(civlTypeChecker.linearTypeChecker.MapWellFormedExpressions(availableVars))
+        .Select(expr => CmdHelper.AssumeCmd(expr)).ToList<Cmd>();
     }
 
-    public List<Cmd> DisjointnessAssumeCmds(Absy absy, bool addGlobals)
+    public List<Cmd> DisjointnessAndWellFormedAssumeCmds(Absy absy, bool addGlobals)
     {
       var availableVars = AvailableLinearLocalVars(absy).Union(addGlobals ? LinearGlobalVars() : new List<Variable>());
-      return DisjointnessExprs(availableVars).Select(expr => CmdHelper.AssumeCmd(expr)).ToList<Cmd>();
+      return DisjointnessExprs(availableVars)
+        .Union(civlTypeChecker.linearTypeChecker.MapWellFormedExpressions(availableVars))
+        .Select(expr => CmdHelper.AssumeCmd(expr)).ToList<Cmd>();
     }
-
-    public List<Expr> DisjointnessExprs(Absy absy, bool addGlobals)
-    {
-      var availableVars = AvailableLinearLocalVars(absy).Union(addGlobals ? LinearGlobalVars() : new List<Variable>());
-      return DisjointnessExprs(availableVars);
-    }
-
-    public Dictionary<string, Expr> PermissionExprs(Absy absy)
-    {
-      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      var domainNameToScope = new Dictionary<string, HashSet<Variable>>();
-      foreach (var domainName in linearTypeChecker.linearDomains.Keys)
-      {
-        domainNameToScope[domainName] = new HashSet<Variable>();
-      }
-
-      var availableVars = AvailableLinearLocalVars(absy).Union(LinearGlobalVars());
-      foreach (var v in availableVars)
-      {
-        var domainName = linearTypeChecker.FindDomainName(v);
-        domainNameToScope[domainName].Add(MapVariable(v));
-      }
-
-      var domainNameToExpr = new Dictionary<string, Expr>();
-      foreach (var domainName in domainNameToScope.Keys)
-      {
-        var permissionExprs =
-          linearTypeChecker.PermissionExprForEachVariable(domainName, domainNameToScope[domainName]);
-        domainNameToExpr[domainName] = linearTypeChecker.UnionExprForPermissions(domainName, permissionExprs);
-      }
-
-      return domainNameToExpr;
-    }
-
-    public void AddDisjointnessAssumptions(Implementation impl, HashSet<Procedure> yieldingProcs)
+    
+    public void AddDisjointnessAndWellFormedAssumptions(Implementation impl)
     {
       // calls and parallel calls
-      foreach (var b in impl.Blocks)
+      foreach (var block in impl.Blocks)
       {
         var newCmds = new List<Cmd>();
-        foreach (var cmd in b.Cmds)
+        foreach (var cmd in block.Cmds)
         {
           newCmds.Add(cmd);
           if (cmd is ParCallCmd)
           {
-            newCmds.AddRange(DisjointnessAssumeCmds(cmd, true));
+            newCmds.AddRange(DisjointnessAndWellFormedAssumeCmds(cmd, true));
           }
         }
-
-        b.Cmds = newCmds;
+        block.Cmds = newCmds;
       }
 
       // loop headers
-      impl.PruneUnreachableBlocks();
+      impl.PruneUnreachableBlocks(Options);
       impl.ComputePredecessorsForBlocks();
       var graph = Program.GraphFromImpl(impl);
       graph.ComputeLoops();
-      if (!graph.Reducible)
-      {
-        throw new Exception("Irreducible flow graphs are unsupported.");
-      }
-
       var loopHeaders = new HashSet<Block>(graph.Headers);
       foreach (var header in loopHeaders)
       {
-        var newCmds = DisjointnessAssumeCmds(header, true);
+        var newCmds = DisjointnessAndWellFormedAssumeCmds(header, true);
         newCmds.AddRange(header.Cmds);
         header.Cmds = newCmds;
       }
     }
 
+    public Dictionary<LinearDomain, Expr> PermissionExprs(Absy absy)
+    {
+      var availableVars = AvailableLinearLocalVars(absy).Union(LinearGlobalVars());
+      var mappedAvailableVars = availableVars.Select(v => MapVariable(v));
+      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
+      return linearTypeChecker.LinearDomains.ToDictionary(domain => domain,
+        domain => linearTypeChecker.UnionExprForPermissions(domain, linearTypeChecker.PermissionExprs(domain, mappedAvailableVars)));
+    }
+
     private List<Expr> DisjointnessExprs(IEnumerable<Variable> availableVars)
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      var domainNameToScope = new Dictionary<string, HashSet<Variable>>();
-      foreach (var domainName in linearTypeChecker.linearDomains.Keys)
+      var mappedAvailableVars = availableVars.Select(v => MapVariable(v));
+      return linearTypeChecker.LinearDomains.Select(domain =>
       {
-        domainNameToScope[domainName] = new HashSet<Variable>();
-      }
-
-      foreach (var v in availableVars)
-      {
-        var domainName = linearTypeChecker.FindDomainName(v);
-        domainNameToScope[domainName].Add(MapVariable(v));
-      }
-
-      var newExprs = new List<Expr>();
-      foreach (var domainName in linearTypeChecker.linearDomains.Keys)
-      {
-        var permissionExprs =
-          linearTypeChecker
-            .PermissionExprForEachVariable(domainName, domainNameToScope[domainName])
-            .Union(
-              domainNameToHoleVar.ContainsKey(domainName)
-                ? new List<Expr> {Expr.Ident(domainNameToHoleVar[domainName])}
-                : new List<Expr>());
-        var expr = linearTypeChecker.DisjointnessExprForPermissions(domainName, permissionExprs);
-        if (!expr.Equals(Expr.True))
-        {
-          newExprs.Add(expr);
-        }
-      }
-
-      return newExprs;
+        var extraExpr = domainToHoleVar.ContainsKey(domain)
+          ? new List<Expr> { Expr.Ident(domainToHoleVar[domain]) }
+          : new List<Expr>();
+        return linearTypeChecker.DisjointnessExprForPermissions(domain, linearTypeChecker.PermissionExprs(domain, mappedAvailableVars).Union(extraExpr));
+      }).Where(expr => !expr.Equals(Expr.True)).ToList();
     }
 
     private IEnumerable<Variable> AvailableLinearLocalVars(Absy absy)
@@ -171,7 +125,7 @@ namespace Microsoft.Boogie
 
       return civlTypeChecker.linearTypeChecker.AvailableLinearVars(absyMap[absy]).Where(v =>
         !(v is GlobalVariable) &&
-        civlTypeChecker.LocalVariableLayerRange(v).Contains(layerNum));
+        v.LayerRange.Contains(layerNum));
     }
 
     private IEnumerable<Variable> FilterInParams(IEnumerable<Variable> locals)
@@ -187,16 +141,14 @@ namespace Microsoft.Boogie
     private IEnumerable<Variable> Filter(IEnumerable<Variable> locals, Predicate<LinearKind> pred)
     {
       return locals.Where(v =>
-        pred(civlTypeChecker.linearTypeChecker.FindLinearKind(v)) &&
-        civlTypeChecker.LocalVariableLayerRange(v).Contains(layerNum));
+        pred(LinearTypeChecker.FindLinearKind(v)) && v.LayerRange.Contains(layerNum));
     }
 
     private IEnumerable<Variable> LinearGlobalVars()
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       return linearTypeChecker.program.GlobalVariables.Where(v =>
-        linearTypeChecker.FindLinearKind(v) == LinearKind.LINEAR &&
-        civlTypeChecker.GlobalVariableLayerRange(v).Contains(layerNum));
+        LinearTypeChecker.FindLinearKind(v) == LinearKind.LINEAR && v.LayerRange.Contains(layerNum));
     }
 
     private Variable MapVariable(Variable v)

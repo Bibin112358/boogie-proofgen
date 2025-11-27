@@ -57,7 +57,7 @@ namespace Microsoft.Boogie
           ne = VisitExpr(e);
           cache[e] = ne;
 #if DEBUG_ALPHA_RENAMING
-          var wr = new TokenTextWriter("<console>", Console.Out, true);
+          var wr = new TokenTextWriter("<console>", options.OutputWriter, true);
           Console.Write("nm( ");
           e.Emit(wr);
           Console.WriteLine(" )");
@@ -157,12 +157,12 @@ namespace Microsoft.Boogie
 
         public override bool IsMutable
         {
-          get { throw new cce.UnreachableException(); }
+          get { throw new Cce.UnreachableException(); }
         }
 
         public override void Register(ResolutionContext rc)
         {
-          throw new cce.UnreachableException();
+          throw new Cce.UnreachableException();
         }
       }
     }

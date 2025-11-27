@@ -29,6 +29,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
+using Microsoft.BaseTypes;
 
 namespace Microsoft.Boogie
 {
@@ -44,10 +45,11 @@ namespace Microsoft.Boogie
       Boolean,
       Uninterpreted,
       Array,
-      DataValue
+      DataValue,
+      Float
     }
 
-    abstract public class Element
+    public abstract class Element
     {
       public readonly Model Model;
       internal List<FuncTuple> references = new List<FuncTuple>();
@@ -184,6 +186,26 @@ namespace Microsoft.Boogie
       public override string ToString()
       {
         return string.Format("{0}bv{1}", Numeral, Size);
+      }
+    }
+
+    public class Float : Element
+    {
+      internal Float(Model p, string n) : base(p)
+      {
+        Literal = n;
+      }
+
+      public readonly string Literal;
+
+      public override ElementKind Kind
+      {
+        get { return ElementKind.Float; }
+      }
+
+      public override string ToString()
+      {
+        return Literal;
       }
     }
 
@@ -647,7 +669,7 @@ namespace Microsoft.Boogie
 
     #region factory methods
 
-    Element ConstructElement(string name)
+    public Element ConstructElement(string name)
     {
       if (name.ToLower() == "true")
       {
@@ -699,7 +721,6 @@ namespace Microsoft.Boogie
         }
 
         var allDigits = new Regex(@"^-?[0-9]*$");
-        var real = new Regex(@"^-?[0-9]+\.[0-9]+$");
         if (allDigits.IsMatch(name))
         {
           if (szi > 0)
@@ -711,13 +732,20 @@ namespace Microsoft.Boogie
             return new Integer(this, name);
           }
         }
-        else if (real.IsMatch(name))
+        else if (double.TryParse(name, out var _))
         {
           return new Real(this, name);
         }
         else
         {
-          return null;
+          // Try parsing as BigFloat
+          try {
+            var _ = BigFloat.FromString(name);
+            return new Float(this, name);
+          } catch {
+            // Not a valid number at all
+            return null;
+          }
         }
       }
       else if (name[0] == '*' || name.StartsWith("val!") || name.Contains("!val!"))

@@ -11,11 +11,13 @@
     <ProjectReference Include="..\Core\Core.csproj" />
     <ProjectReference Include="..\Graph\Graph.csproj" />
     <ProjectReference Include="..\Model\Model.csproj" />
+    <ProjectReference Include="..\ProofGeneration\ProofGeneration.csproj" />
+    <ProjectReference Include="..\Provers\SMTLib\SMTLib.csproj" />
     <ProjectReference Include="..\VCExpr\VCExpr.csproj" />
-    <ProjectReference Include="..\ProofGeneration\ProofGeneration.csproj">
-      <Project>{8f6517b5-87d6-4281-9f9d-74288aa36a14}</Project>
-      <Name>ProofGeneration</Name>
-    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Reactive" Version="4.4.1" />
   </ItemGroup>
 
 </Project>

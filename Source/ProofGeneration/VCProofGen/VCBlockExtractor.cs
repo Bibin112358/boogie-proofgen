@@ -67,7 +67,7 @@ namespace ProofGeneration.VCProofGen
             var split = vcName.Split(new[] {'_'});
             if (split.Length >= 2 && split[split.Length - 1].Equals("correct"))
             {
-                predictedBlockName = split.Take(split.Length - 1).Concat("_");
+                predictedBlockName = string.Join("_", split.Take(split.Length - 1));
                 return true;
             }
 

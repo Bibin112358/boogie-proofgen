@@ -1,4 +1,5 @@
-﻿using Microsoft.Boogie.TestUtil;
+﻿using System.IO;
+using Microsoft.Boogie.TestUtil;
 using Microsoft.Boogie;
 using Microsoft.BaseTypes;
 using NUnit.Framework;
@@ -7,7 +8,7 @@ using System.Linq;
 namespace CoreTests
 {
   [TestFixture()]
-  public class DuplicatorTests : BoogieTestBase, IErrorSink
+  public class DuplicatorTests : IErrorSink
   {
     Duplicator d;
 
@@ -119,7 +120,8 @@ namespace CoreTests
     [Test()]
     public void GotoTargets()
     {
-      Program p = TestUtil.ProgramLoader.LoadProgramFrom(@"
+      var options = CommandLineOptions.FromArguments(TextWriter.Null);
+      Program p = TestUtil.ProgramLoader.LoadProgramFrom(options, @"
         procedure main()
         {
             entry:
@@ -141,13 +143,13 @@ namespace CoreTests
       var main = p.TopLevelDeclarations.OfType<Implementation>().Where(x => x.Name == "main").First();
 
       // Access blocks via their labels of gotocmds
-      var oldEntryBlock = (main.Blocks[1].TransferCmd as GotoCmd).labelTargets[0];
+      var oldEntryBlock = (main.Blocks[1].TransferCmd as GotoCmd).LabelTargets[0];
       Assert.AreEqual("entry", oldEntryBlock.Label);
 
-      var oldThing1Block = (main.Blocks[1].TransferCmd as GotoCmd).labelTargets[1];
+      var oldThing1Block = (main.Blocks[1].TransferCmd as GotoCmd).LabelTargets[1];
       Assert.AreEqual("thing1", oldThing1Block.Label);
 
-      var oldThing2Block = (main.Blocks[0].TransferCmd as GotoCmd).labelTargets[1];
+      var oldThing2Block = (main.Blocks[0].TransferCmd as GotoCmd).LabelTargets[1];
       Assert.AreEqual("thing2", oldThing2Block.Label);
 
       // Now duplicate
@@ -171,21 +173,22 @@ namespace CoreTests
       var newEntryGotoCmd = newEntryBlock.TransferCmd as GotoCmd;
       var newthing1GotoCmd = newThing1Block.TransferCmd as GotoCmd;
 
-      Assert.AreNotSame(newEntryGotoCmd.labelTargets[0], oldThing1Block);
-      Assert.AreSame(newEntryGotoCmd.labelTargets[0], newThing1Block);
-      Assert.AreNotSame(newEntryGotoCmd.labelTargets[1], oldThing2Block);
-      Assert.AreSame(newEntryGotoCmd.labelTargets[1], newThing2Block);
+      Assert.AreNotSame(newEntryGotoCmd.LabelTargets[0], oldThing1Block);
+      Assert.AreSame(newEntryGotoCmd.LabelTargets[0], newThing1Block);
+      Assert.AreNotSame(newEntryGotoCmd.LabelTargets[1], oldThing2Block);
+      Assert.AreSame(newEntryGotoCmd.LabelTargets[1], newThing2Block);
 
-      Assert.AreNotSame(newthing1GotoCmd.labelTargets[0], oldEntryBlock);
-      Assert.AreSame(newthing1GotoCmd.labelTargets[0], newEntryBlock);
-      Assert.AreNotSame(newthing1GotoCmd.labelTargets[1], oldThing1Block);
-      Assert.AreSame(newthing1GotoCmd.labelTargets[1], newThing1Block);
+      Assert.AreNotSame(newthing1GotoCmd.LabelTargets[0], oldEntryBlock);
+      Assert.AreSame(newthing1GotoCmd.LabelTargets[0], newEntryBlock);
+      Assert.AreNotSame(newthing1GotoCmd.LabelTargets[1], oldThing1Block);
+      Assert.AreSame(newthing1GotoCmd.LabelTargets[1], newThing1Block);
     }
 
     [Test()]
     public void ImplementationProcedureResolving()
     {
-      Program p = TestUtil.ProgramLoader.LoadProgramFrom(@"
+      var options = CommandLineOptions.FromArguments(TextWriter.Null);
+      Program p = TestUtil.ProgramLoader.LoadProgramFrom(options, @"
         procedure main(a:int) returns (r:int);
         requires a > 0;
         ensures  r > a;
@@ -205,7 +208,7 @@ namespace CoreTests
       var newProgram = (Program) d.Visit(p);
 
       // Resolving doesn't seem to fix this.
-      var rc = new ResolutionContext(this);
+      var rc = new ResolutionContext(this, options);
       newProgram.Resolve(rc);
 
       // Check resolved
@@ -217,7 +220,8 @@ namespace CoreTests
     [Test()]
     public void CallCmdResolving()
     {
-      Program p = TestUtil.ProgramLoader.LoadProgramFrom(@"
+      var options = CommandLineOptions.FromArguments(TextWriter.Null);
+      Program p = TestUtil.ProgramLoader.LoadProgramFrom(options, @"
         procedure main()
         {
             var x:int;

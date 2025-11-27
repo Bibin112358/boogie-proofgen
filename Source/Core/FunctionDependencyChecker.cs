@@ -9,24 +9,24 @@ namespace Microsoft.Boogie
         {
             var checkingContext = new CheckingContext(null);
             var functionDependencyChecker = new FunctionDependencyChecker();
-            program.TopLevelDeclarations.OfType<Function>().Iter(function =>
+            program.TopLevelDeclarations.OfType<Function>().ForEach(function =>
             {
                 var expr = QKeyValue.FindExprAttribute(function.Attributes, "inline");
                 if (expr != null && expr.Type != Type.Bool)
                 {
                     checkingContext.Error(function.tok, "Parameter to :inline attribute on a function must be Boolean");
                 }
-                if (QKeyValue.FindBoolAttribute(function.Attributes, "inline") &&
-                    QKeyValue.FindBoolAttribute(function.Attributes, "define"))
+                if (function.Attributes.FindBoolAttribute("inline") &&
+                    function.Attributes.FindBoolAttribute("define"))
                 {
                     checkingContext.Error(function.tok, "A function may not have both :inline and :define attributes");
                 }
-                if (QKeyValue.FindBoolAttribute(function.Attributes, "inline") &&
+                if (function.Attributes.FindBoolAttribute("inline") &&
                     function.Body == null)
                 {
                     checkingContext.Error(function.tok, "Function with :inline attribute must have a body");
                 }
-                if (QKeyValue.FindBoolAttribute(function.Attributes, "define") &&
+                if (function.Attributes.FindBoolAttribute("define") &&
                     function.DefinitionBody == null)
                 {
                     checkingContext.Error(function.tok, "Function with :define attribute must have a body");
@@ -37,7 +37,7 @@ namespace Microsoft.Boogie
                 return false;
             }
             program.TopLevelDeclarations.OfType<Function>()
-                .Iter(function => functionDependencyChecker.VisitFunction(function));
+                .ForEach(function => functionDependencyChecker.VisitFunction(function));
             var functionDependencyGraph = functionDependencyChecker.functionDependencyGraph;
             var selfLoops = functionDependencyGraph.Edges.SelectMany(edge =>
                 edge.Item1 == edge.Item2 ? new[] {edge.Item1} : Enumerable.Empty<Function>()).ToHashSet();
@@ -46,7 +46,7 @@ namespace Microsoft.Boogie
                 functionDependencyGraph.Predecessors,
                 functionDependencyGraph.Successors);
             sccs.Compute();
-            sccs.Iter(scc =>
+            sccs.ForEach(scc =>
             {
                 if (scc.Count > 1 ||
                     scc.Count == 1 && selfLoops.Contains(scc.First()))
@@ -54,7 +54,7 @@ namespace Microsoft.Boogie
                     var errorMsg = "Call cycle detected among functions";
                     var first = true;
                     var token = Token.NoToken;
-                    scc.Iter(function =>
+                    CollectionExtensions.ForEach(scc, function =>
                     {
                         if (first)
                         {
@@ -84,13 +84,13 @@ namespace Microsoft.Boogie
 
         public override Function VisitFunction(Function node)
         {
-            if (QKeyValue.FindBoolAttribute(node.Attributes, "inline"))
+            if (node.Attributes.FindBoolAttribute("inline"))
             {
                 this.enclosingFunction = node;
                 base.Visit(node.Body);
                 this.enclosingFunction = null;
             }
-            else if (QKeyValue.FindBoolAttribute(node.Attributes, "define"))
+            else if (node.Attributes.FindBoolAttribute("define"))
             {
                 this.enclosingFunction = node;
                 base.Visit(node.DefinitionBody.Args[1]);
@@ -103,8 +103,8 @@ namespace Microsoft.Boogie
         {
             if (node.Fun is FunctionCall functionCall)
             {
-                if (QKeyValue.FindBoolAttribute(functionCall.Func.Attributes, "inline") ||
-                    QKeyValue.FindBoolAttribute(functionCall.Func.Attributes, "define"))
+                if (functionCall.Func.Attributes.FindBoolAttribute("inline") ||
+                    functionCall.Func.Attributes.FindBoolAttribute("define"))
                 {
                     functionDependencyGraph.AddEdge(enclosingFunction, functionCall.Func);
                 }

@@ -254,10 +254,10 @@ namespace Microsoft.Boogie
         case BranchIndicator.GuardHolds:
         {
           IfCmd ifcmd = (IfCmd) parentBigBlockOrig.ec;
-          int position = ifcmd.thn.BigBlocks.IndexOf(b);
+          int position = ifcmd.Thn.BigBlocks.IndexOf(b);
 
           IfCmd ifcmdCopy = (IfCmd) parentBigBlockCopy.ec;
-          BigBlock currentBigBlockCopy = ifcmdCopy.thn.BigBlocks[position];
+          BigBlock currentBigBlockCopy = ifcmdCopy.Thn.BigBlocks[position];
 
           mappingCopyBigblockToOrigBigblock.Add(currentBigBlockCopy, b);
           mappingOrigBigblockToCopyBigblock.Add(b, currentBigBlockCopy);
@@ -270,10 +270,10 @@ namespace Microsoft.Boogie
         case BranchIndicator.GuardFails:
         {
           IfCmd ifcmd = (IfCmd) parentBigBlockOrig.ec;
-          int position = ifcmd.elseBlock.BigBlocks.IndexOf(b);
+          int position = ifcmd.ElseBlock.BigBlocks.IndexOf(b);
 
           IfCmd ifcmdCopy = (IfCmd) parentBigBlockCopy.ec;
-          BigBlock currentBigBlockCopy = ifcmdCopy.elseBlock.BigBlocks[position];
+          BigBlock currentBigBlockCopy = ifcmdCopy.ElseBlock.BigBlocks[position];
 
           mappingCopyBigblockToOrigBigblock.Add(currentBigBlockCopy, b);
           mappingOrigBigblockToCopyBigblock.Add(b, currentBigBlockCopy);
@@ -307,14 +307,14 @@ namespace Microsoft.Boogie
       if (b.ec is IfCmd)
       {
         IfCmd ifcmd = (IfCmd) b.ec;
-        foreach (BigBlock bb in ifcmd.thn.BigBlocks)
+        foreach (BigBlock bb in ifcmd.Thn.BigBlocks)
         {
           AddBigBlockBeforeNamingAnonymous(bb, false, b, copy, BranchIndicator.GuardHolds);
         }
 
-        if (ifcmd.elseBlock != null)
+        if (ifcmd.ElseBlock != null)
         {
-          foreach (BigBlock bb in ifcmd.elseBlock.BigBlocks)
+          foreach (BigBlock bb in ifcmd.ElseBlock.BigBlocks)
           {
             AddBigBlockBeforeNamingAnonymous(bb, false, b, copy, BranchIndicator.GuardFails);
           }
@@ -351,14 +351,14 @@ namespace Microsoft.Boogie
 
       if (b0.ec is IfCmd ifcmd)
       {
-        foreach (var thenBb in ifcmd.thn.BigBlocks)
+        foreach (var thenBb in ifcmd.Thn.BigBlocks)
         {
           AddBigBlockToLoopPair(thenBb, b1);
         }
 
-        if (ifcmd.elseBlock != null)
+        if (ifcmd.ElseBlock != null)
         {
-          foreach (var elseBb in ifcmd.elseBlock.BigBlocks)
+          foreach (var elseBb in ifcmd.ElseBlock.BigBlocks)
           {
             AddBigBlockToLoopPair(elseBb, b1);
           }
@@ -392,30 +392,30 @@ namespace Microsoft.Boogie
         IfCmd @if = (IfCmd) b.ec;
 
         IList<BigBlock> thenCopy = new List<BigBlock>();
-        foreach (BigBlock bb in @if.thn.BigBlocks)
+        foreach (BigBlock bb in @if.Thn.BigBlocks)
         {
           thenCopy.Add(CopyBigBlock(bb));
         }
 
-        StmtList thenCopyStmts = new StmtList(thenCopy, @if.thn.EndCurly);
+        StmtList thenCopyStmts = new StmtList(thenCopy, @if.Thn.EndCurly);
 
         IList<BigBlock> elseCopy = new List<BigBlock>();
         StmtList elseCopyStmts;
-        if (@if.elseBlock == null)
+        if (@if.ElseBlock == null)
         {
           elseCopyStmts = new StmtList(elseCopy, new Token());
         }
         else
         {
-          foreach (BigBlock bb in @if.elseBlock.BigBlocks)
+          foreach (BigBlock bb in @if.ElseBlock.BigBlocks)
           {
             elseCopy.Add(CopyBigBlock(bb));
           }
 
-          elseCopyStmts = new StmtList(elseCopy, @if.elseBlock.EndCurly);
+          elseCopyStmts = new StmtList(elseCopy, @if.ElseBlock.EndCurly);
         }
 
-        ecCopy = new IfCmd(@if.tok, @if.Guard, thenCopyStmts, @if.elseIf, elseCopyStmts);
+        ecCopy = new IfCmd(@if.tok, @if.Guard, thenCopyStmts, @if.ElseIf, elseCopyStmts);
       }
       else if (b.ec is WhileCmd)
       {
@@ -428,7 +428,7 @@ namespace Microsoft.Boogie
         }
 
         StmtList bodyCopyStmts = new StmtList(bodyCopy, @while.Body.EndCurly);
-        ecCopy = new WhileCmd(@while.tok, @while.Guard, @while.Invariants, bodyCopyStmts);
+        ecCopy = new WhileCmd(@while.tok, @while.Guard, @while.Invariants, @while.Yields, bodyCopyStmts);
       }
       else
       {
@@ -455,25 +455,25 @@ namespace Microsoft.Boogie
     {
       if (b.ec is IfCmd ifcmd)
       {
-        foreach (var thenBb in ifcmd.thn.BigBlocks)
+        foreach (var thenBb in ifcmd.Thn.BigBlocks)
         {
           FillEmptyElseBranches(thenBb);
         }
 
-        if (ifcmd.elseIf == null && ifcmd.elseBlock == null)
+        if (ifcmd.ElseIf == null && ifcmd.ElseBlock == null)
         {
           IList<BigBlock> emptyElseBranch = new List<BigBlock>();
           BigBlock emptyElseBranchBigBlock = new BigBlock(Token.NoToken, null, new List<Cmd>(), null, null);
           emptyElseBranch.Add(emptyElseBranchBigBlock);
 
-          emptyElseBranchBigBlock.successorBigBlock = b.successorBigBlock;
+          emptyElseBranchBigBlock.SuccessorBigBlock = b.SuccessorBigBlock;
 
-          ifcmd.elseBlock = new StmtList(emptyElseBranch, Token.NoToken);
+          ifcmd.ElseBlock = new StmtList(emptyElseBranch, Token.NoToken);
         }
 
-        if (ifcmd.elseBlock != null)
+        if (ifcmd.ElseBlock != null)
         {
-          foreach (var elseBb in ifcmd.elseBlock.BigBlocks)
+          foreach (var elseBb in ifcmd.ElseBlock.BigBlocks)
           {
             FillEmptyElseBranches(elseBb);
           }
@@ -512,13 +512,13 @@ namespace Microsoft.Boogie
       }
       else if (possibleContainerBigBlock.ec is IfCmd ifcmd)
       {
-        if (ifcmd.thn.BigBlocks.Contains(bigBlockToBeChecked) ||
-            ifcmd.elseBlock.BigBlocks.Contains(bigBlockToBeChecked))
+        if (ifcmd.Thn.BigBlocks.Contains(bigBlockToBeChecked) ||
+            ifcmd.ElseBlock.BigBlocks.Contains(bigBlockToBeChecked))
         {
           return true;
         }
 
-        foreach (var thenBb in ifcmd.thn.BigBlocks)
+        foreach (var thenBb in ifcmd.Thn.BigBlocks)
         {
           if (InBigBlock(bigBlockToBeChecked, thenBb))
           {
@@ -526,9 +526,9 @@ namespace Microsoft.Boogie
           }
         }
 
-        if (ifcmd.elseBlock != null)
+        if (ifcmd.ElseBlock != null)
         {
-          foreach (var elseBb in ifcmd.elseBlock.BigBlocks)
+          foreach (var elseBb in ifcmd.ElseBlock.BigBlocks)
           {
             if (InBigBlock(bigBlockToBeChecked, elseBb))
             {
@@ -545,6 +545,7 @@ namespace Microsoft.Boogie
       typeof(object).GetMethod("MemberwiseClone", BindingFlags.NonPublic | BindingFlags.Instance);
     
     public IList<Block> CopyBlocks(
+        PrintOptions options,
         IList<Block> blocks,
         Dictionary<Block, List<Block>> predecessorMap,
         bool desugarCalls,
@@ -571,7 +572,7 @@ namespace Microsoft.Boogie
             foreach (var cmd in b.Cmds)
                 if (cmd is SugaredCmd sugaredCmd && desugarCalls)
                 {
-                    var stateCmd = sugaredCmd.Desugaring as StateCmd;
+                    var stateCmd = sugaredCmd.GetDesugaring(options) as StateCmd;
                     newVarsFromDesugaring.AddRange(stateCmd.Locals);
                     foreach (var desugaredCmd in stateCmd.Cmds) copyCmds.Add(copyCmd(desugaredCmd));
                 }
@@ -593,9 +594,9 @@ namespace Microsoft.Boogie
         {
             if (copyBlock.TransferCmd is GotoCmd gtc)
             {
-                var newSuccessors = gtc.labelTargets.Select(succ => oldToNewBlock[succ]).ToList();
+                var newSuccessors = gtc.LabelTargets.Select(succ => oldToNewBlock[succ]).ToList();
                 var gotoCmdCopy = (GotoCmd) CloneMethod.Invoke(gtc, null);
-                gotoCmdCopy.labelTargets = newSuccessors;
+                gotoCmdCopy.LabelTargets = newSuccessors;
                 copyBlock.TransferCmd = gotoCmdCopy;
             }
             else
@@ -626,8 +627,8 @@ namespace Microsoft.Boogie
         var gtc = b.TransferCmd as GotoCmd;
         if (gtc != null)
         {
-          Contract.Assert(gtc.labelTargets != null);
-          foreach (var /*!*/ dest in gtc.labelTargets)
+          Contract.Assert(gtc.LabelTargets != null);
+          foreach (var /*!*/ dest in gtc.LabelTargets)
           {
             Contract.Assert(dest != null);
             predecessors[dest].Add(b);

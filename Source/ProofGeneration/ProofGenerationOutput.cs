@@ -16,7 +16,7 @@ namespace ProofGeneration
 
         public static void CreateMainDirectory(string fileName, bool onlyUseFileName)
         {
-            if (CommandLineOptions.Clo.DontStoreProofGenFiles)
+            if (ProofGenerationOptions.Clo.DontStoreProofGenFiles)
                 return;
             
             if (_mainDir != null)
@@ -31,7 +31,7 @@ namespace ProofGeneration
         
         public static void StoreTheoriesTopLevel(IEnumerable<Theory> theories)
         {
-            if (CommandLineOptions.Clo.DontStoreProofGenFiles)
+            if (ProofGenerationOptions.Clo.DontStoreProofGenFiles)
                 return;
             
             if (_mainDir == null)
@@ -51,7 +51,7 @@ namespace ProofGeneration
         /// <exception cref="ProofGenUnexpectedStateException">Thrown if main proof generation directory is not set.</exception>
         public static void StoreTheoriesInNewDirWithSession(string preferredDirName, IEnumerable<Theory> theories)
         {
-            if (CommandLineOptions.Clo.DontStoreProofGenFiles)
+            if (ProofGenerationOptions.Clo.DontStoreProofGenFiles)
                 return;
             
             if (_mainDir == null)
@@ -113,7 +113,7 @@ namespace ProofGeneration
         
         public static void FinishStoring()
         {
-            if (CommandLineOptions.Clo.DontStoreProofGenFiles)
+            if (ProofGenerationOptions.Clo.DontStoreProofGenFiles)
                 return;
             
             if (_mainDir == null)

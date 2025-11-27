@@ -51,8 +51,8 @@ namespace ProofGeneration.VCProofGen
             ProgramIsPolymorphic = programIsPolymorphic;
             if (programIsPolymorphic)
             {
-                AxiomBuilder = new TypeAxiomBuilderPremisses(vcExprGen);
-                AxiomBuilder.Setup();
+                AxiomBuilder = new TypeAxiomBuilderPremisses(vcExprGen, ProofGenerationOptions.Clo);
+                AxiomBuilder.Setup(TypeAxiomBuilder.ProofgenSupportedTypes);
             }
             else
             {

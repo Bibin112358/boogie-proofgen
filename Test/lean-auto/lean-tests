@@ -1,0 +1,17 @@
+../extractloops/detLoopExtract.bpl
+../extractloops/detLoopExtractNested.bpl
+../extractloops/t1.bpl
+../extractloops/t2.bpl
+../inline/expansion4.bpl
+../inline/inline_n_0.bpl
+../inline/test1.bpl
+../inline/test2.bpl
+../inline/test3.bpl
+../inline/test6.bpl
+../textbook/TuringFactorial.bpl
+../textbook/DutchFlag.bpl
+../textbook/Bubble.bpl
+../textbook/DivMod.bpl
+../textbook/Find.bpl
+../textbook/McCarthy-91.bpl
+./Triggers0Valid.bpl

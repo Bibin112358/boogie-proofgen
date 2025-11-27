@@ -286,7 +286,7 @@ namespace ProofGeneration
           foreach (BigBlock b in originalAst.GetBlocksBackwards())
           {
             BigBlock correspondingBigBlockOrig = proofGenInfo.GetMappingCopyBigblockToOrigBigblock()[b];
-            BigBlock successorBigBlockOrig = correspondingBigBlockOrig.successorBigBlock;
+            BigBlock successorBigBlockOrig = correspondingBigBlockOrig.SuccessorBigBlock;
 
             int successorIndex = -1;
             if (successorBigBlockOrig != null)
@@ -336,14 +336,14 @@ namespace ProofGeneration
             else if (b.ec is IfCmd)
             {
               IfCmd ifcmd = (IfCmd) b.ec;
-              ASTRepr thn = new ASTRepr(ifcmd.thn.BigBlocks);
+              ASTRepr thn = new ASTRepr(ifcmd.Thn.BigBlocks);
               
               //recursively construct continuation terms for the body of the thn-branch of the if-statement.
               declsToReturn.AddRange(getContinuations(thn, proofGenInfo));
 
-              if (ifcmd.elseBlock != null)
+              if (ifcmd.ElseBlock != null)
               {
-                ASTRepr elseBlock = new ASTRepr(ifcmd.elseBlock.BigBlocks);
+                ASTRepr elseBlock = new ASTRepr(ifcmd.ElseBlock.BigBlocks);
                 
                 //recursively construct continuation terms for the body of the else-branch of the if-statement.
                 declsToReturn.AddRange(getContinuations(elseBlock, proofGenInfo)); 

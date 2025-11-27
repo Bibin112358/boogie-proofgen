@@ -11,8 +11,13 @@ namespace Microsoft.Boogie
     {
       return new List<Cmd>();
     }
-
+    
     public virtual List<Cmd> CreateAssumeCmds()
+    {
+      return new List<Cmd>();
+    }
+
+    public virtual List<Cmd> CreateActionEvaluationCmds()
     {
       return new List<Cmd>();
     }
@@ -51,12 +56,13 @@ namespace Microsoft.Boogie
     private List<Variable> newLocalVars;
     private Variable pc;
     private Variable ok;
+    private Variable eval;
     private Expr gate;
     private Expr transitionRelation;
     private IToken tok;
     private int layerNum;
 
-    private Dictionary<AtomicAction, Expr> transitionRelationCache;
+    private Dictionary<Action, Expr> transitionRelationCache;
 
     public ActionRefinementInstrumentation(
       CivlTypeChecker civlTypeChecker,
@@ -67,24 +73,25 @@ namespace Microsoft.Boogie
       this.civlTypeChecker = civlTypeChecker;
       this.tok = impl.tok;
       this.oldGlobalMap = new Dictionary<Variable, Variable>();
-      ActionProc actionProc = civlTypeChecker.procToYieldingProc[originalImpl.Proc] as ActionProc;
-      this.layerNum = actionProc.upperLayer;
-      foreach (Variable v in civlTypeChecker.GlobalVariables)
+      var yieldProcedureDecl = (YieldProcedureDecl)originalImpl.Proc;
+      this.layerNum = yieldProcedureDecl.Layer;
+      foreach (Variable v in civlTypeChecker.GlobalVariablesAtLayer(layerNum))
       {
-        var layerRange = civlTypeChecker.GlobalVariableLayerRange(v);
-        if (layerRange.lowerLayerNum <= layerNum && layerNum < layerRange.upperLayerNum)
-        {
-          this.oldGlobalMap[v] = oldGlobalMap[v];
-        }
+        this.oldGlobalMap[v] = oldGlobalMap[v];
       }
 
       this.newLocalVars = new List<Variable>();
       pc = civlTypeChecker.LocalVariable("pc", Type.Bool);
       newLocalVars.Add(pc);
-      ok = civlTypeChecker.LocalVariable("ok", Type.Bool);
-      newLocalVars.Add(ok);
+      if (!civlTypeChecker.Options.TrustRefinement)
+      {
+        ok = civlTypeChecker.LocalVariable("ok", Type.Bool);
+        newLocalVars.Add(ok);
+        eval = civlTypeChecker.LocalVariable("eval", Type.Bool);
+        newLocalVars.Add(eval);
+      }
 
-      this.transitionRelationCache = new Dictionary<AtomicAction, Expr>();
+      this.transitionRelationCache = new Dictionary<Action, Expr>();
 
       oldOutputMap = new Dictionary<Variable, Variable>();
       foreach (Variable f in impl.OutParams)
@@ -103,41 +110,44 @@ namespace Microsoft.Boogie
       // The parameters of an atomic action come from the implementation that denotes the atomic action specification.
       // To use the transition relation computed below in the context of the yielding procedure of the refinement check,
       // we need to substitute the parameters.
-      AtomicAction atomicAction = actionProc.refinedAction;
-      Implementation atomicActionImpl = atomicAction.impl;
+      var atomicAction = civlTypeChecker.Action(yieldProcedureDecl.RefinedAction.ActionDecl);
       Dictionary<Variable, Expr> alwaysMap = new Dictionary<Variable, Expr>();
       for (int i = 0, j = 0; i < impl.InParams.Count; i++)
       {
-        if (civlTypeChecker.FormalRemainsInAction(actionProc, actionProc.proc.InParams[i]))
+        if (yieldProcedureDecl.VisibleFormals.Contains(yieldProcedureDecl.InParams[i]))
         {
-          alwaysMap[atomicActionImpl.InParams[j]] = Expr.Ident(impl.InParams[i]);
+          alwaysMap[atomicAction.Impl.InParams[j]] = Expr.Ident(impl.InParams[i]);
           j++;
         }
       }
 
       for (int i = 0, j = 0; i < impl.OutParams.Count; i++)
       {
-        if (civlTypeChecker.FormalRemainsInAction(actionProc, actionProc.proc.OutParams[i]))
+        if (yieldProcedureDecl.VisibleFormals.Contains(yieldProcedureDecl.OutParams[i]))
         {
-          alwaysMap[atomicActionImpl.OutParams[j]] = Expr.Ident(impl.OutParams[i]);
+          alwaysMap[atomicAction.Impl.OutParams[j]] = Expr.Ident(impl.OutParams[i]);
           j++;
         }
       }
 
       if (atomicAction.HasPendingAsyncs)
       {
-        Variable collectedPAs = civlTypeChecker.implToPendingAsyncCollector[originalImpl];
-        alwaysMap[atomicActionImpl.OutParams.Last()] = Expr.Ident(collectedPAs);
-        LocalVariable copy = Old(collectedPAs);
-        newLocalVars.Add(copy);
-        oldOutputMap[collectedPAs] = copy;
+        atomicAction.PendingAsyncs.ForEach(decl =>
+        {
+          Variable collectedPAs =
+            civlTypeChecker.PendingAsyncCollectors(originalImpl)[decl.PendingAsyncType];
+          alwaysMap[atomicAction.PAs(decl.PendingAsyncType)] = Expr.Ident(collectedPAs);
+          LocalVariable copy = Old(collectedPAs);
+          newLocalVars.Add(copy);
+          oldOutputMap[collectedPAs] = copy;
+        });
       }
 
       Substitution always = Substituter.SubstitutionFromDictionary(alwaysMap);
       Substitution forold = Substituter.SubstitutionFromDictionary(foroldMap);
       Expr transitionRelationExpr = GetTransitionRelation(atomicAction);
       transitionRelation = Substituter.ApplyReplacingOldExprs(always, forold, transitionRelationExpr);
-      Expr gateExpr = Expr.And(atomicAction.gate.Select(g => g.Expr));
+      Expr gateExpr = Expr.And(atomicAction.Gate.Select(g => g.Expr));
       gateExpr.Type = Type.Bool;
       gate = Substituter.Apply(always, gateExpr);
     }
@@ -146,8 +156,13 @@ namespace Microsoft.Boogie
 
     public override List<Cmd> CreateInitCmds()
     {
-      var lhss = new List<IdentifierExpr> { Expr.Ident(pc), Expr.Ident(ok) };
-      var rhss = new List<Expr> { Expr.False, Expr.False };
+      var lhss = new List<IdentifierExpr> { Expr.Ident(pc) };
+      var rhss = new List<Expr> { Expr.False };
+      if (!civlTypeChecker.Options.TrustRefinement)
+      {
+        lhss.AddRange(new List<IdentifierExpr> { Expr.Ident(ok), Expr.Ident(eval) });
+        rhss.AddRange(new List<Expr> { Expr.False, Expr.False });
+      }
       var cmds = new List<Cmd> { CmdHelper.AssignCmd(lhss, rhss) };
       cmds.AddRange(CreateUpdatesToOldOutputVars());
       // assume spec gate at procedure entry
@@ -163,32 +178,49 @@ namespace Microsoft.Boogie
       return new List<Cmd> { CmdHelper.AssumeCmd(assumeExpr) };
     }
 
+    public override List<Cmd> CreateActionEvaluationCmds()
+    {
+      // eval := transitionRelation(i, g_old, o, g);
+      if (civlTypeChecker.Options.TrustRefinement)
+      {
+        return new List<Cmd>();
+      }
+      return new List<Cmd> { CmdHelper.AssignCmd(eval, transitionRelation) };
+    }
+    
     public override List<Cmd> CreateAssertCmds()
     {
-      // assert pc || g_old == g || transitionRelation(i, g_old, o, g);
-      var skipOrTransitionRelationAssertCmd = CmdHelper.AssertCmd(
-        tok,
-        Expr.Or(Expr.Ident(pc), Expr.Or(OldEqualityExprForGlobals(), transitionRelation)),
-        $"A yield-to-yield fragment modifies layer-{layerNum + 1} state in a way that does not match the refined atomic action");
-      CivlUtil.ResolveAndTypecheck(skipOrTransitionRelationAssertCmd);
-
       // assert pc ==> g_old == g && o_old == o;
       AssertCmd skipAssertCmd = CmdHelper.AssertCmd(
         tok,
         Expr.Imp(Expr.Ident(pc), Expr.And(OldEqualityExprForGlobals(), OldEqualityExprForOutputs())),
         $"A yield-to-yield fragment modifies layer-{layerNum + 1} state subsequent to a yield-to-yield fragment that already modified layer-{layerNum + 1} state");
-      CivlUtil.ResolveAndTypecheck(skipAssertCmd);
-      
-      return new List<Cmd> {skipOrTransitionRelationAssertCmd, skipAssertCmd};
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, skipAssertCmd);
+      if (civlTypeChecker.Options.TrustRefinement)
+      {
+        return new List<Cmd> { skipAssertCmd };
+      }
+
+      // assert pc || g_old == g || eval;
+      var skipOrTransitionRelationAssertCmd = CmdHelper.AssertCmd(
+        tok,
+        Expr.Or(Expr.Ident(pc), Expr.Or(OldEqualityExprForGlobals(), Expr.Ident(eval))),
+        $"A yield-to-yield fragment modifies layer-{layerNum + 1} state in a way that does not match the refined atomic action");
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, skipOrTransitionRelationAssertCmd);
+      return new List<Cmd> { skipOrTransitionRelationAssertCmd, skipAssertCmd };
     }
 
     public override List<Cmd> CreateReturnAssertCmds()
     {
+      if (civlTypeChecker.Options.TrustRefinement)
+      {
+        return new List<Cmd>();
+      }
       AssertCmd assertCmd = CmdHelper.AssertCmd(
         tok,
         Expr.Ident(ok),
         "On some path no yield-to-yield fragment matched the refined atomic action");
-      return new List<Cmd> {assertCmd};
+      return new List<Cmd> { assertCmd };
     }
 
     public override List<Cmd> CreateUnchangedAssertCmds()
@@ -197,41 +229,52 @@ namespace Microsoft.Boogie
         tok,
         Expr.And(this.oldGlobalMap.Select(kvPair => Expr.Eq(Expr.Ident(kvPair.Key), Expr.Ident(kvPair.Value)))),
         $"A yield-to-yield fragment illegally modifies layer-{layerNum + 1} globals");
-      CivlUtil.ResolveAndTypecheck(globalsAssertCmd);
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, globalsAssertCmd);
 
       // assert pc ==> o_old == o;
       AssertCmd outputsAssertCmd = CmdHelper.AssertCmd(
         tok,
         Expr.Imp(Expr.Ident(pc), OldEqualityExprForOutputs()),
         $"A yield-to-yield fragment illegally modifies layer-{layerNum + 1} outputs");
-      CivlUtil.ResolveAndTypecheck(outputsAssertCmd);
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, outputsAssertCmd);
 
-      return new List<Cmd> {globalsAssertCmd, outputsAssertCmd};
+      return new List<Cmd> { globalsAssertCmd, outputsAssertCmd };
     }
 
     public override List<Cmd> CreateUpdatesToRefinementVars(bool isMarkedCall)
     {
       var cmds = new List<Cmd>();
-      var pcOkUpdateLHS = new List<IdentifierExpr> { Expr.Ident(pc), Expr.Ident(ok) };
+      var pcOkUpdateLHS = new List<IdentifierExpr> { Expr.Ident(pc) };
+      if (!civlTypeChecker.Options.TrustRefinement)
+      {
+        pcOkUpdateLHS.Add(Expr.Ident(ok));
+      }
       if (isMarkedCall)
       {
         // assert !pc;
         // pc, ok := true, true;
         cmds.Add(CmdHelper.AssertCmd(tok, Expr.Not(Expr.Ident(pc)), $"Layer-{layerNum + 1} state modified before marked call"));
-        var pcOkUpdateRHS = new List<Expr> {Expr.True, Expr.True};
+        var pcOkUpdateRHS = new List<Expr> { Expr.True };
+        if (!civlTypeChecker.Options.TrustRefinement)
+        {
+          pcOkUpdateRHS.Add(Expr.True);
+        }
         cmds.Add(CmdHelper.AssignCmd(pcOkUpdateLHS, pcOkUpdateRHS));
       }
       else
       {
-        // pc, ok := g_old == g ==> pc, transitionRelation(i, g_old, o, g) || (o_old == o && ok);
+        // pc, ok := g_old == g ==> pc, eval || (o_old == o && ok);
         var pcOkUpdateRHS = new List<Expr> {
-          Expr.Imp(OldEqualityExprForGlobals(), Expr.Ident(pc)),
-          Expr.Or(transitionRelation, Expr.And(OldEqualityExprForOutputs(), Expr.Ident(ok))),
+          Expr.Imp(OldEqualityExprForGlobals(), Expr.Ident(pc))
         };
+        if (!civlTypeChecker.Options.TrustRefinement)
+        {
+          pcOkUpdateRHS.Add(Expr.Or(Expr.Ident(eval), Expr.And(OldEqualityExprForOutputs(), Expr.Ident(ok))));
+        }
         cmds.Add(CmdHelper.AssignCmd(pcOkUpdateLHS, pcOkUpdateRHS));
       }
 
-      CivlUtil.ResolveAndTypecheck(cmds);
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, cmds);
 
       return cmds;
     }
@@ -245,7 +288,6 @@ namespace Microsoft.Boogie
         lhss.Add(Expr.Ident(oldOutputMap[o]));
         rhss.Add(Expr.Ident(o));
       }
-
       if (lhss.Count > 0)
       {
         return new List<Cmd> { CmdHelper.AssignCmd(lhss,rhss) };
@@ -253,14 +295,13 @@ namespace Microsoft.Boogie
       return new List<Cmd>();
     }
 
-    private Expr GetTransitionRelation(AtomicAction atomicAction)
+    private Expr GetTransitionRelation(Action atomicAction)
     {
       if (!transitionRelationCache.ContainsKey(atomicAction))
       {
         transitionRelationCache[atomicAction] =
-          TransitionRelationComputation.Refinement(civlTypeChecker, atomicAction, new HashSet<Variable>(this.oldGlobalMap.Keys));
+          TransitionRelationComputation.Refinement(civlTypeChecker, atomicAction.Impl, new HashSet<Variable>(this.oldGlobalMap.Keys));
       }
-
       return transitionRelationCache[atomicAction];
     }
 

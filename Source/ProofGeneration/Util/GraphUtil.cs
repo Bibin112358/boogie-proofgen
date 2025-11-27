@@ -17,8 +17,8 @@ namespace ProofGeneration.Util
                 var gtc = b.TransferCmd as GotoCmd;
                 if (gtc != null)
                 {
-                    Contract.Assume(gtc.labelTargets != null);
-                    foreach (var dest in gtc.labelTargets)
+                    Contract.Assume(gtc.LabelTargets != null);
+                    foreach (var dest in gtc.LabelTargets)
                     {
                         Contract.Assert(dest != null);
                         if (reverse)

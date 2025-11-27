@@ -2,28 +2,82 @@ using Core;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Linq;
 using Set = Microsoft.Boogie.GSet<object>; // for the purposes here, "object" really means "either Variable or TypeVariable"
 
 namespace Microsoft.Boogie
 {
+  /// <summary>
+  /// This class is a wrapper over a Dictionary from LambdaExpr to the FunctionCall
+  /// used for creating an instance of that lambda. When a LambdaExpr is alpha-equivalent
+  /// to another, this wrapper does the point-wise append of the parameter attributes
+  /// from the duplicate to the original.
+  /// </summary>
+  public class LiftedLambdas
+  {
+    private readonly Dictionary<LambdaExpr, Tuple<LambdaExpr, FunctionCall>> liftedLambdas =
+      new(new AlphaEquality());
+      
+    public FunctionCall this[LambdaExpr expr]
+    {
+      set => liftedLambdas[expr] = new Tuple<LambdaExpr, FunctionCall>(expr, value);
+    }
+    public bool TryGetValue(LambdaExpr expr, out FunctionCall functionCall)
+    {
+      functionCall = null;
+      Tuple<LambdaExpr, FunctionCall> pair;
+      if (!liftedLambdas.TryGetValue(expr, out pair))
+      {
+        return false;
+      }
+      functionCall = pair.Item2;
+      var currExpr = pair.Item1;
+      // to the attributes of each dummy of currExpr, append the attributes of the corresponding dummy of expr 
+      currExpr.Dummies.Zip(expr.Dummies).ForEach(x =>
+      {
+        if (x.Item2.Attributes == null)
+        {
+          return;
+        }
+        var clonedAttrs = (QKeyValue)x.Item2.Attributes.Clone();
+        if (x.Item1.Attributes == null)
+        {
+          x.Item1.Attributes = clonedAttrs;
+        }
+        else
+        {
+          // Add each attribute in clonedAttrs to x.Item1 if not already present
+          QKeyValue kv = clonedAttrs;
+          while (kv != null)
+          {
+            var res = kv;
+            kv = kv.Next;
+            res.Next = null;
+            if (x.Item1.FindIdenticalAttribute(res) == null)
+            {
+              x.Item1.Attributes.AddLast(res);
+            }
+          }
+        }
+      });
+      return true;
+    }
+  }
+  
   public static class LambdaHelper
   {
-    public static Program Desugar(Program program, out List<Axiom /*!*/> /*!*/ axioms,
-      out List<Function /*!*/> /*!*/ functions)
+    public static Program Desugar(CoreOptions options, Program program, out List<Axiom> axioms,
+      out List<Function> functions)
     {
-      Contract.Requires(program != null);
-      Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out functions)));
-      Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out axioms)));
-      Contract.Ensures(Contract.Result<Program>() != null);
-      LambdaVisitor v = new LambdaVisitor();
+      LambdaVisitor v = new LambdaVisitor(options);
       program = v.VisitProgram(program);
       axioms = v.lambdaAxioms;
       functions = v.lambdaFunctions;
-      if (CommandLineOptions.Clo.TraceVerify)
+      if (options.TraceVerify)
       {
-        Console.WriteLine("Desugaring of lambda expressions produced {0} functions and {1} axioms:", functions.Count,
+        options.OutputWriter.WriteLine("Desugaring of lambda expressions produced {0} functions and {1} axioms:", functions.Count,
           axioms.Count);
-        TokenTextWriter wr = new TokenTextWriter("<console>", Console.Out, /*pretty=*/ false);
+        TokenTextWriter wr = new TokenTextWriter("<console>", options.OutputWriter, /*pretty=*/ false, options);
         foreach (Function f in functions)
         {
           f.Emit(wr, 0);
@@ -32,7 +86,7 @@ namespace Microsoft.Boogie
         foreach (var ax in axioms)
         {
           ax.Emit(wr, 0);
-          Console.WriteLine();
+          options.OutputWriter.WriteLine();
         }
       }
 
@@ -71,11 +125,9 @@ namespace Microsoft.Boogie
     /// <see cref="LambdaVisitor.LambdaLifterMaxHoles"/> is used by default whereas <c>LambdaLiftingFreeVars</c>
     /// is used with the command-line option <c>/freeVarLambdaLifting</c>.
     /// </summary>
-    public static void ExpandLambdas(Program prog)
+    public static void ExpandLambdas(CoreOptions options, Program prog)
     {
-      Contract.Requires(prog != null);
-
-      Desugar(prog, out var axioms, out var functions);
+      Desugar(options, prog, out var axioms, out var functions);
       foreach (var f in functions)
       {
         prog.AddTopLevelDeclaration(f);
@@ -89,23 +141,19 @@ namespace Microsoft.Boogie
 
     private class LambdaVisitor : VarDeclOnceStandardVisitor
     {
-      private readonly Dictionary<Expr, FunctionCall> liftedLambdas =
-        new Dictionary<Expr, FunctionCall>(new AlphaEquality());
+      private CoreOptions options;
+      private readonly LiftedLambdas liftedLambdas = new();
 
-      internal List<Axiom /*!*/> /*!*/
-        lambdaAxioms = new List<Axiom /*!*/>();
+      internal List<Axiom> lambdaAxioms = new ();
 
-      internal List<Function /*!*/> /*!*/
-        lambdaFunctions = new List<Function /*!*/>();
-
-      [ContractInvariantMethod]
-      void ObjectInvariant()
-      {
-        Contract.Invariant(cce.NonNullElements(lambdaAxioms));
-        Contract.Invariant(cce.NonNullElements(lambdaFunctions));
-      }
+      internal List<Function> lambdaFunctions = new ();
 
       int lambdaid = 0;
+
+      public LambdaVisitor(CoreOptions options)
+      {
+        this.options = options;
+      }
 
       string FreshLambdaFunctionName()
       {
@@ -121,7 +169,7 @@ namespace Microsoft.Boogie
           return baseResult; // apparently, the base visitor already turned the lambda into something else
         }
 
-        return CommandLineOptions.Clo.FreeVarLambdaLifting ? LiftLambdaFreeVars(lambda) : LiftLambdaMaxHoles(lambda);
+        return options.FreeVarLambdaLifting ? LiftLambdaFreeVars(lambda) : LiftLambdaMaxHoles(lambda);
       }
 
       /// <summary>
@@ -174,7 +222,7 @@ namespace Microsoft.Boogie
           Substituter.SubstitutionFromDictionary(oldSubst),
           lambda.Attributes);
 
-        if (0 < CommandLineOptions.Clo.VerifySnapshots &&
+        if (0 < options.VerifySnapshots &&
             QKeyValue.FindStringAttribute(lambdaAttrs, "checksum") == null)
         {
           // Attach a dummy checksum to avoid issues in the dependency analysis.
@@ -197,7 +245,7 @@ namespace Microsoft.Boogie
         var axCallArgs = new List<Expr>();
         var dummies = new List<Variable>();
         var freeTypeVars = new List<TypeVariable>();
-        var fnTypeVarActuals = new List<Type /*!*/>();
+        var fnTypeVarActuals = new List<Type>();
         var freshTypeVars = new List<TypeVariable>(); // these are only used in the lambda@n function's definition
 
         // compute the free variables of the lambda expression, but with lambdaBody instead of lambda.Body
@@ -241,25 +289,25 @@ namespace Microsoft.Boogie
         dummies.AddRange(lambda.Dummies);
 
         var sw = new System.IO.StringWriter();
-        var wr = new TokenTextWriter(sw, true);
+        var wr = new TokenTextWriter(sw, true, options);
         lambda.Emit(wr);
         string lam_str = sw.ToString();
 
         IToken tok = lambda.tok;
-        Formal res = new Formal(tok, new TypedIdent(tok, TypedIdent.NoName, cce.NonNull(lambda.Type)), false);
+        Formal res = new Formal(tok, new TypedIdent(tok, TypedIdent.NoName, Cce.NonNull(lambda.Type)), false);
 
         if (liftedLambdas.TryGetValue(lambda, out var fcall))
         {
-          if (CommandLineOptions.Clo.TraceVerify)
+          if (options.TraceVerify)
           {
-            Console.WriteLine("Old lambda: {0}", lam_str);
+            options.OutputWriter.WriteLine("Old lambda: {0}", lam_str);
           }
         }
         else
         {
-          if (CommandLineOptions.Clo.TraceVerify)
+          if (options.TraceVerify)
           {
-            Console.WriteLine("New lambda: {0}", lam_str);
+            options.OutputWriter.WriteLine("New lambda: {0}", lam_str);
           }
 
           Function fn = new Function(tok, FreshLambdaFunctionName(), freshTypeVars, formals, res,
@@ -271,8 +319,8 @@ namespace Microsoft.Boogie
           fcall.Func = fn; // resolve here
           liftedLambdas[lambda] = fcall;
 
-          List<Expr /*!*/> selectArgs = new List<Expr /*!*/>();
-          foreach (Variable /*!*/ v in lambda.Dummies)
+          List<Expr> selectArgs = new List<Expr>();
+          foreach (Variable v in lambda.Dummies)
           {
             Contract.Assert(v != null);
             selectArgs.Add(new IdentifierExpr(v.tok, v));
@@ -283,9 +331,9 @@ namespace Microsoft.Boogie
           axcall.TypeParameters = SimpleTypeParamInstantiation.From(freeTypeVars, fnTypeVarActuals);
           NAryExpr select = Expr.Select(axcall, selectArgs);
           select.Type = lambdaBody.Type;
-          List<Type /*!*/> selectTypeParamActuals = new List<Type /*!*/>();
+          List<Type> selectTypeParamActuals = new List<Type>();
           List<TypeVariable> forallTypeVariables = new List<TypeVariable>();
-          foreach (TypeVariable /*!*/ tp in lambda.TypeParameters)
+          foreach (TypeVariable tp in lambda.TypeParameters)
           {
             Contract.Assert(tp != null);
             selectTypeParamActuals.Add(tp);
@@ -369,7 +417,7 @@ namespace Microsoft.Boogie
         // We perform lambda lifting on the resulting lambda which now contains only `old` expressions of the form
         // `old(x)` where `x` is a variable that is free in the lambda.
         return new MaxHolesLambdaLifter(
-            newLambda, liftedLambdas, FreshLambdaFunctionName(), lambdaFunctions, lambdaAxioms)
+            newLambda, liftedLambdas, FreshLambdaFunctionName(), lambdaFunctions, lambdaAxioms, options)
           .VisitLambdaExpr(newLambda);
       }
 

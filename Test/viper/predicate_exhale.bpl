@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie "%s" | %OutputCheck "%s"
+// RUN: %parallel-boogie -typeEncoding:p "%s" | %OutputCheck "%s"
 
 // ==================================================
 // Preamble of State module.
@@ -235,25 +235,25 @@ procedure length#definedness(x_1: Ref) returns (Result: int)
   var UnfoldingMask: MaskType;
   var ExhaleHeap: HeapType;
   var newPMask: PMaskType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume Heap[x_1, $allocated];
     assume AssumeFunctionsAbove == 0;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Inhaling precondition (with checking)
     perm := FullPerm;
     Mask[null, list(x_1)] := Mask[null, list(x_1)] + perm;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Check definedness of function body
-    
+
     // -- Check definedness of 1 + (unfolding acc(list(x), write) in (x.next != null ? length(x.next) : 0))
       UnfoldingHeap := Heap;
       UnfoldingMask := Mask;
@@ -278,7 +278,7 @@ procedure length#definedness(x_1: Ref) returns (Result: int)
       if (UnfoldingHeap[x_1, next] != null) {
         perm := FullPerm;
         UnfoldingMask[null, list(UnfoldingHeap[x_1, next])] := UnfoldingMask[null, list(UnfoldingHeap[x_1, next])] + perm;
-        
+
         // -- Extra unfolding of predicate
           assume InsidePredicate(list(x_1), UnfoldingHeap[null, list(x_1)], list(UnfoldingHeap[x_1, next]), UnfoldingHeap[null, list(UnfoldingHeap[x_1, next])]);
         assume state(UnfoldingHeap, UnfoldingMask);
@@ -295,7 +295,7 @@ procedure length#definedness(x_1: Ref) returns (Result: int)
           perm := NoPerm;
           perm := perm + FullPerm;
           if (perm != NoPerm) {
-            assert {:msg "  Precondition of function length might not hold. There might be insufficient permission to access list(x.next). (predicate_exhale.vpr@18.48) [80]"}
+            assert {:msg "  Precondition of function length could not be proved. There might be insufficient permission to access list(x.next). (predicate_exhale.vpr@18.48) [80]"}
               perm <= UnfoldingMask[null, list(UnfoldingHeap[x_1, next])];
           }
           UnfoldingMask[null, list(UnfoldingHeap[x_1, next])] := UnfoldingMask[null, list(UnfoldingHeap[x_1, next])] - perm;
@@ -310,7 +310,7 @@ procedure length#definedness(x_1: Ref) returns (Result: int)
           assume length#trigger(UnfoldingHeap[null, list(UnfoldingHeap[x_1, next])], UnfoldingHeap[x_1, next]);
         }
       }
-      
+
       // -- Free assumptions
         Heap[null, list#sm(x_1)][x_1, f_6] := true;
         Heap[null, list#sm(x_1)][x_1, next] := true;
@@ -323,7 +323,7 @@ procedure length#definedness(x_1: Ref) returns (Result: int)
           Heap[null, list#sm(x_1)] := newPMask;
         }
         assume state(Heap, Mask);
-      
+
       // -- Free assumptions
         Heap[null, list#sm(x_1)][x_1, f_6] := true;
         Heap[null, list#sm(x_1)][x_1, next] := true;
@@ -337,7 +337,7 @@ procedure length#definedness(x_1: Ref) returns (Result: int)
         }
         assume state(Heap, Mask);
       assume state(Heap, Mask);
-  
+
   // -- Translate function body
     Result := 1 + (if Heap[x_1, next] != null then length(Heap, Heap[x_1, next]) else 0);
 }
@@ -389,29 +389,29 @@ procedure test1(x_1: Ref) returns ()
   var newVersion: FrameType;
   var freshVersion: FrameType;
   var newPMask: PMaskType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == -1;
-  
+
   // -- Assumptions about method arguments
     assume Heap[x_1, $allocated];
-  
+
   // -- Checked inhaling of precondition
     perm := FullPerm;
     Mask[null, list(x_1)] := Mask[null, list(x_1)] + perm;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: inhale length(x) == 7 -- predicate_exhale.vpr@28.3
-    
+
     // -- Check definedness of length(x) == 7
       if (*) {
         // Exhale precondition of function application
@@ -419,7 +419,7 @@ procedure test1(x_1: Ref) returns ()
         perm := NoPerm;
         perm := perm + FullPerm;
         if (perm != NoPerm) {
-          assert {:msg "  Precondition of function length might not hold. There might be insufficient permission to access list(x). (predicate_exhale.vpr@28.10) [81]"}
+          assert {:msg "  Precondition of function length could not be proved. There might be insufficient permission to access list(x). (predicate_exhale.vpr@28.10) [81]"}
             perm <= Mask[null, list(x_1)];
         }
         Mask[null, list(x_1)] := Mask[null, list(x_1)] - perm;
@@ -435,7 +435,7 @@ procedure test1(x_1: Ref) returns ()
     assume length(Heap, x_1) == 7;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: unfold acc(list(x), write) -- predicate_exhale.vpr@30.3
     assume list#trigger(Heap, list(x_1));
     assume Heap[null, list(x_1)] == CombineFrames(FrameFragment(Heap[x_1, f_6]), CombineFrames(FrameFragment(Heap[x_1, next]), FrameFragment((if Heap[x_1, next] != null then Heap[null, list(Heap[x_1, next])] else EmptyFrame))));
@@ -447,7 +447,7 @@ procedure test1(x_1: Ref) returns ()
         perm <= Mask[null, list(x_1)];
     }
     Mask[null, list(x_1)] := Mask[null, list(x_1)] - perm;
-    
+
     // -- Update version of predicate
       if (!HasDirectPerm(Mask, null, list(x_1))) {
         havoc newVersion;
@@ -464,23 +464,23 @@ procedure test1(x_1: Ref) returns ()
     if (Heap[x_1, next] != null) {
       perm := FullPerm;
       Mask[null, list(Heap[x_1, next])] := Mask[null, list(Heap[x_1, next])] + perm;
-      
+
       // -- Extra unfolding of predicate
         assume InsidePredicate(list(x_1), Heap[null, list(x_1)], list(Heap[x_1, next]), Heap[null, list(Heap[x_1, next])]);
       assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale x.next != null && x.f == 5 -- predicate_exhale.vpr@31.3
-    
+
     // -- Check definedness of x.next != null
       assert {:msg "  Inhale might fail. There might be insufficient permission to access x.next. (predicate_exhale.vpr@31.3) [84]"}
         HasDirectPerm(Mask, x_1, next);
       assume state(Heap, Mask);
     assume Heap[x_1, next] != null;
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of x.f == 5
       assert {:msg "  Inhale might fail. There might be insufficient permission to access x.f. (predicate_exhale.vpr@31.3) [85]"}
         HasDirectPerm(Mask, x_1, f_6);
@@ -488,7 +488,7 @@ procedure test1(x_1: Ref) returns ()
     assume Heap[x_1, f_6] == 5;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: fold acc(list(x), write) -- predicate_exhale.vpr@32.3
     // Phase 1: pure assertions and fixed permissions
     perm := NoPerm;
@@ -513,19 +513,19 @@ procedure test1(x_1: Ref) returns ()
           perm <= Mask[null, list(Heap[x_1, next])];
       }
       Mask[null, list(Heap[x_1, next])] := Mask[null, list(Heap[x_1, next])] - perm;
-      
+
       // -- Record predicate instance information
         assume InsidePredicate(list(x_1), Heap[null, list(x_1)], list(Heap[x_1, next]), Heap[null, list(Heap[x_1, next])]);
     }
     // Phase 2: abstract read permissions (and scaled abstract read permissions)
     if (Heap[x_1, next] != null) {
-      
+
       // -- Record predicate instance information
         assume InsidePredicate(list(x_1), Heap[null, list(x_1)], list(Heap[x_1, next]), Heap[null, list(Heap[x_1, next])]);
     }
     // Phase 3: all remaining permissions (containing read permissions, but in a negative context)
     if (Heap[x_1, next] != null) {
-      
+
       // -- Record predicate instance information
         assume InsidePredicate(list(x_1), Heap[null, list(x_1)], list(Heap[x_1, next]), Heap[null, list(Heap[x_1, next])]);
     }
@@ -552,9 +552,9 @@ procedure test1(x_1: Ref) returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert length(x) == 7 -- predicate_exhale.vpr@34.3
-    
+
     // -- Check definedness of length(x) == 7
       if (*) {
         // Exhale precondition of function application
@@ -562,7 +562,7 @@ procedure test1(x_1: Ref) returns ()
         perm := NoPerm;
         perm := perm + FullPerm;
         if (perm != NoPerm) {
-          assert {:msg "  Precondition of function length might not hold. There might be insufficient permission to access list(x). (predicate_exhale.vpr@34.10) [92]"}
+          assert {:msg "  Precondition of function length could not be proved. There might be insufficient permission to access list(x). (predicate_exhale.vpr@34.10) [92]"}
             perm <= Mask[null, list(x_1)];
         }
         Mask[null, list(x_1)] := Mask[null, list(x_1)] - perm;
@@ -575,10 +575,10 @@ procedure test1(x_1: Ref) returns ()
       }
       assume state(Heap, Mask);
     // Phase 1: pure assertions and fixed permissions
-    assert {:msg "  Assert might fail. Assertion length(x) == 7 might not hold. (predicate_exhale.vpr@34.3) [93]"}
+    assert {:msg "  Assert might fail. Assertion length(x) == 7 could not be proved. (predicate_exhale.vpr@34.3) [93]"}
       length(Heap, x_1) == 7;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: unfold acc(list(x), write) -- predicate_exhale.vpr@36.3
     assume list#trigger(Heap, list(x_1));
     assume Heap[null, list(x_1)] == CombineFrames(FrameFragment(Heap[x_1, f_6]), CombineFrames(FrameFragment(Heap[x_1, next]), FrameFragment((if Heap[x_1, next] != null then Heap[null, list(Heap[x_1, next])] else EmptyFrame))));
@@ -590,7 +590,7 @@ procedure test1(x_1: Ref) returns ()
         perm <= Mask[null, list(x_1)];
     }
     Mask[null, list(x_1)] := Mask[null, list(x_1)] - perm;
-    
+
     // -- Update version of predicate
       if (!HasDirectPerm(Mask, null, list(x_1))) {
         havoc newVersion;
@@ -607,25 +607,25 @@ procedure test1(x_1: Ref) returns ()
     if (Heap[x_1, next] != null) {
       perm := FullPerm;
       Mask[null, list(Heap[x_1, next])] := Mask[null, list(Heap[x_1, next])] + perm;
-      
+
       // -- Extra unfolding of predicate
         assume InsidePredicate(list(x_1), Heap[null, list(x_1)], list(Heap[x_1, next]), Heap[null, list(Heap[x_1, next])]);
       assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert x.f == 5 -- predicate_exhale.vpr@37.3
-    
+
     // -- Check definedness of x.f == 5
       assert {:msg "  Assert might fail. There might be insufficient permission to access x.f. (predicate_exhale.vpr@37.3) [96]"}
         HasDirectPerm(Mask, x_1, f_6);
       assume state(Heap, Mask);
     // Phase 1: pure assertions and fixed permissions
-    assert {:msg "  Assert might fail. Assertion x.f == 5 might not hold. (predicate_exhale.vpr@37.3) [97]"}
+    assert {:msg "  Assert might fail. Assertion x.f == 5 could not be proved. (predicate_exhale.vpr@37.3) [97]"}
       Heap[x_1, f_6] == 5;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: fold acc(list(x), write) -- predicate_exhale.vpr@38.3
     // Phase 1: pure assertions and fixed permissions
     perm := NoPerm;
@@ -650,19 +650,19 @@ procedure test1(x_1: Ref) returns ()
           perm <= Mask[null, list(Heap[x_1, next])];
       }
       Mask[null, list(Heap[x_1, next])] := Mask[null, list(Heap[x_1, next])] - perm;
-      
+
       // -- Record predicate instance information
         assume InsidePredicate(list(x_1), Heap[null, list(x_1)], list(Heap[x_1, next]), Heap[null, list(Heap[x_1, next])]);
     }
     // Phase 2: abstract read permissions (and scaled abstract read permissions)
     if (Heap[x_1, next] != null) {
-      
+
       // -- Record predicate instance information
         assume InsidePredicate(list(x_1), Heap[null, list(x_1)], list(Heap[x_1, next]), Heap[null, list(Heap[x_1, next])]);
     }
     // Phase 3: all remaining permissions (containing read permissions, but in a negative context)
     if (Heap[x_1, next] != null) {
-      
+
       // -- Record predicate instance information
         assume InsidePredicate(list(x_1), Heap[null, list(x_1)], list(Heap[x_1, next]), Heap[null, list(Heap[x_1, next])]);
     }
@@ -689,9 +689,9 @@ procedure test1(x_1: Ref) returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert length(x) == 7 -- predicate_exhale.vpr@40.3
-    
+
     // -- Check definedness of length(x) == 7
       if (*) {
         // Exhale precondition of function application
@@ -699,7 +699,7 @@ procedure test1(x_1: Ref) returns ()
         perm := NoPerm;
         perm := perm + FullPerm;
         if (perm != NoPerm) {
-          assert {:msg "  Precondition of function length might not hold. There might be insufficient permission to access list(x). (predicate_exhale.vpr@40.10) [104]"}
+          assert {:msg "  Precondition of function length could not be proved. There might be insufficient permission to access list(x). (predicate_exhale.vpr@40.10) [104]"}
             perm <= Mask[null, list(x_1)];
         }
         Mask[null, list(x_1)] := Mask[null, list(x_1)] - perm;
@@ -712,10 +712,10 @@ procedure test1(x_1: Ref) returns ()
       }
       assume state(Heap, Mask);
     // Phase 1: pure assertions and fixed permissions
-    assert {:msg "  Assert might fail. Assertion length(x) == 7 might not hold. (predicate_exhale.vpr@40.3) [105]"}
+    assert {:msg "  Assert might fail. Assertion length(x) == 7 could not be proved. (predicate_exhale.vpr@40.3) [105]"}
       length(Heap, x_1) == 7;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: exhale acc(list(x), write) -- predicate_exhale.vpr@42.3
     // Phase 1: pure assertions and fixed permissions
     perm := NoPerm;
@@ -730,16 +730,16 @@ procedure test1(x_1: Ref) returns ()
     assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
     Heap := ExhaleHeap;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale acc(list(x), write) -- predicate_exhale.vpr@43.3
     perm := FullPerm;
     Mask[null, list(x_1)] := Mask[null, list(x_1)] + perm;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert length(x) == 7 -- predicate_exhale.vpr@45.3
-    
+
     // -- Check definedness of length(x) == 7
       if (*) {
         // Exhale precondition of function application
@@ -747,7 +747,7 @@ procedure test1(x_1: Ref) returns ()
         perm := NoPerm;
         perm := perm + FullPerm;
         if (perm != NoPerm) {
-          assert {:msg "  Precondition of function length might not hold. There might be insufficient permission to access list(x). (predicate_exhale.vpr@45.10) [108]"}
+          assert {:msg "  Precondition of function length could not be proved. There might be insufficient permission to access list(x). (predicate_exhale.vpr@45.10) [108]"}
             perm <= Mask[null, list(x_1)];
         }
         Mask[null, list(x_1)] := Mask[null, list(x_1)] - perm;
@@ -760,8 +760,8 @@ procedure test1(x_1: Ref) returns ()
       }
       assume state(Heap, Mask);
     // Phase 1: pure assertions and fixed permissions
-    // CHECK-L: Assert might fail. Assertion length(x) == 7 might not hold. (predicate_exhale.vpr@45.3) [109]
-    assert {:msg "Assert might fail. Assertion length(x) == 7 might not hold. (predicate_exhale.vpr@45.3) [109]"}
+    // CHECK-L: Assert might fail. Assertion length(x) == 7 could not be proved. (predicate_exhale.vpr@45.3) [109]
+    assert {:msg "Assert might fail. Assertion length(x) == 7 could not be proved. (predicate_exhale.vpr@45.3) [109]"}
       length(Heap, x_1) == 7;
     assume state(Heap, Mask);
 }

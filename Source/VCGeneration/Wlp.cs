@@ -2,13 +2,14 @@ using System;
 using Microsoft.Boogie;
 using Microsoft.Boogie.VCExprAST;
 using System.Diagnostics.Contracts;
-using System.Collections.Generic;
 using Microsoft.BaseTypes;
 
 namespace VC
 {
   public class VCContext
   {
+    public VCGenOptions Options { get; }
+
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
@@ -21,18 +22,20 @@ namespace VC
     public int AssertionCount; // counts the number of assertions for which Wlp has been computed
     public bool isPositiveContext;
 
-    public VCContext(ControlFlowIdMap<Absy> absyIds, ProverContext ctxt, bool isPositiveContext = true)
+    public VCContext(VCGenOptions options, ControlFlowIdMap<Absy> absyIds, ProverContext ctxt, bool isPositiveContext = true)
     {
       Contract.Requires(ctxt != null);
+      Options = options;
       this.absyIds = absyIds;
       this.Ctxt = ctxt;
       this.isPositiveContext = isPositiveContext;
     }
 
-    public VCContext(ControlFlowIdMap<Absy> absyIds, ProverContext ctxt, VCExpr controlFlowVariableExpr,
+    public VCContext(VCGenOptions options, ControlFlowIdMap<Absy> absyIds, ProverContext ctxt, VCExpr controlFlowVariableExpr,
       bool isPositiveContext = true)
     {
       Contract.Requires(ctxt != null);
+      Options = options;
       this.absyIds = absyIds;
       this.Ctxt = ctxt;
       this.ControlFlowVariableExpr = controlFlowVariableExpr;
@@ -59,19 +62,19 @@ namespace VC
 
       for (int i = b.Cmds.Count; --i >= 0;)
       {
-        res = Cmd(b, cce.NonNull(b.Cmds[i]), res, ctxt);
+        res = Cmd(b, Cce.NonNull(b.Cmds[i]), res, ctxt);
       }
 
       ctxt.absyIds.GetId(b);
 
       try
       {
-        cce.BeginExpose(ctxt);
+        Cce.BeginExpose(ctxt);
         return res;
       }
       finally
       {
-        cce.EndExpose();
+        Cce.EndExpose();
       }
     }
 
@@ -104,19 +107,28 @@ namespace VC
         }
 
         VCExpr C = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr);
+
+        // Assuming that proofgen is not using or supporting TrackVerificationCoverage, as this seems like an orthogonal concern.
         #region proofgeneration
         VCExpr postVC = N;
         VCExpr exprVC = C;
         #endregion
 
-                VCExpr VU = null;
+        var assertId = QKeyValue.FindStringAttribute(ac.Attributes, "id");
+        if (assertId != null && ctxt.Options.TrackVerificationCoverage)
+        {
+          var v = gen.Variable(assertId, Microsoft.Boogie.Type.Bool, VCExprVarKind.Assert);
+          C = gen.Function(VCExpressionGenerator.NamedAssertOp, v, gen.AndSimp(v, C));
+        }
+
+        VCExpr VU = null;
         if (!isFullyVerified)
         {
           if (ac.VerifiedUnder != null)
           {
             VU = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.VerifiedUnder);
 
-            if (CommandLineOptions.Clo.RunDiagnosticsOnTimeout)
+            if (ctxt.Options.RunDiagnosticsOnTimeout)
             {
               ctxt.Ctxt.TimeoutDiagnosticIDToAssertion[ctxt.Ctxt.TimeoutDiagnosticsCount] =
                 new Tuple<AssertCmd, TransferCmd>(ac, b.TransferCmd);
@@ -125,7 +137,7 @@ namespace VC
                   gen.Integer(BigNum.FromInt(ctxt.Ctxt.TimeoutDiagnosticsCount++))));
             }
           }
-          else if (CommandLineOptions.Clo.RunDiagnosticsOnTimeout)
+          else if (ctxt.Options.RunDiagnosticsOnTimeout)
           {
             ctxt.Ctxt.TimeoutDiagnosticIDToAssertion[ctxt.Ctxt.TimeoutDiagnosticsCount] =
               new Tuple<AssertCmd, TransferCmd>(ac, b.TransferCmd);
@@ -137,9 +149,9 @@ namespace VC
         }
 
         {
-          var subsumption = Subsumption(ac);
-          if (subsumption == CommandLineOptions.SubsumptionOption.Always
-              || (subsumption == CommandLineOptions.SubsumptionOption.NotForQuantifiers && !(C is VCExprQuantifier)))
+          var subsumption = Subsumption(ctxt.Options, ac);
+          if (subsumption == CoreOptions.SubsumptionOption.Always
+              || (subsumption == CoreOptions.SubsumptionOption.NotForQuantifiers && !(C is VCExprQuantifier)))
           {
             // Translate ac.Expr again so that we create separate VC expressions for the two different
             // occurrences of the translation of ac.Expr.  Pool-based quantifier instantiation assumes
@@ -147,7 +159,7 @@ namespace VC
             N = gen.ImpliesSimp(ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr), N, false);
           }
 
-         if (isFullyVerified)
+          if (isFullyVerified)
           {
             throw new NotImplementedException("proof generation does not support this option (caching of verification results)");
             return N;
@@ -164,17 +176,16 @@ namespace VC
           if (ctxt.ControlFlowVariableExpr == null)
           {
             Contract.Assert(ctxt.absyIds != null);
-            #region proofgeneration
 
+            #region proofgen
             ProofGeneration.ProofGenerationLayer.NextVcHintForBlock(
-                cmd,
-                b,
-                exprVC,
-                postVC,
-                gen.AndSimp(C, N),
-                subsumption
+              cmd,
+              b,
+              exprVC,
+              postVC,
+              gen.AndSimp(C, N),
+              subsumption
             );
-
             #endregion
 
             return gen.AndSimp(C, N);
@@ -189,11 +200,19 @@ namespace VC
           }
         }
       }
+      else if (cmd is HideRevealCmd)
+      {
+        return N;
+      }
+      else if (cmd is ChangeScope)
+      {
+        return N;
+      }
       else if (cmd is AssumeCmd)
       {
         AssumeCmd ac = (AssumeCmd) cmd;
 
-        if (CommandLineOptions.Clo.StratifiedInlining > 0)
+        if (ctxt.Options.StratifiedInlining > 0)
         {
           // Label the assume if it is a procedure call
           NAryExpr naryExpr = ac.Expr as NAryExpr;
@@ -210,40 +229,40 @@ namespace VC
 
         var expr = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr);
 
-        var aid = QKeyValue.FindStringAttribute(ac.Attributes, "id");
-        if (aid != null)
+        var assumeId = QKeyValue.FindStringAttribute(ac.Attributes, "id");
+        if (assumeId != null && ctxt.Options.TrackVerificationCoverage)
         {
-          var isTry = QKeyValue.FindBoolAttribute(ac.Attributes, "try");
-          var v = gen.Variable((isTry ? "try$$" : "assume$$") + aid, Microsoft.Boogie.Type.Bool);
+          var isTry = ac.Attributes.FindBoolAttribute("try");
+          var v = gen.Variable(assumeId, Microsoft.Boogie.Type.Bool, isTry ? VCExprVarKind.Try : VCExprVarKind.Assume);
           expr = gen.Function(VCExpressionGenerator.NamedAssumeOp, v, gen.ImpliesSimp(v, expr));
         }
 
-        var soft = QKeyValue.FindBoolAttribute(ac.Attributes, "soft");
+        var soft = ac.Attributes.FindBoolAttribute("soft");
         var softWeight = QKeyValue.FindIntAttribute(ac.Attributes, "soft", 0);
-        if ((soft || 0 < softWeight) && aid != null)
+        if ((soft || 0 < softWeight) && assumeId != null)
         {
-          var v = gen.Variable("soft$$" + aid, Microsoft.Boogie.Type.Bool);
+          var v = gen.Variable(assumeId, Microsoft.Boogie.Type.Bool, VCExprVarKind.Soft);
           expr = gen.Function(new VCExprSoftOp(Math.Max(softWeight, 1)), v, gen.ImpliesSimp(v, expr));
         }
 
-        #region proofgeneration
+        #region proofgen
         ProofGeneration.ProofGenerationLayer.NextVcHintForBlock(
-            cmd,
-            b,
-            expr,
-            N,
-            gen.ImpliesSimp(expr, N),
-            CommandLineOptions.SubsumptionOption.Never
-            );
-        #endregion 
+          cmd,
+          b,
+          expr,
+          N,
+          gen.ImpliesSimp(expr, N),
+          CoreOptions.SubsumptionOption.Never
+        );
+        #endregion
 
         return MaybeWrapWithOptimization(ctxt, gen, ac.Attributes, gen.ImpliesSimp(expr, N));
       }
       else
       {
-        Console.WriteLine(cmd.ToString());
+        ctxt.Options.OutputWriter.WriteLine(cmd.ToString());
         Contract.Assert(false);
-        throw new cce.UnreachableException(); // unexpected command
+        throw new Cce.UnreachableException(); // unexpected command
       }
     }
 
@@ -265,16 +284,16 @@ namespace VC
       return expr;
     }
 
-    public static CommandLineOptions.SubsumptionOption Subsumption(AssertCmd ac)
+    public static CoreOptions.SubsumptionOption Subsumption(VCGenOptions options, AssertCmd ac)
     {
       Contract.Requires(ac != null);
       int n = QKeyValue.FindIntAttribute(ac.Attributes, "subsumption", -1);
       switch (n)
       {
-        case 0: return CommandLineOptions.SubsumptionOption.Never;
-        case 1: return CommandLineOptions.SubsumptionOption.NotForQuantifiers;
-        case 2: return CommandLineOptions.SubsumptionOption.Always;
-        default: return CommandLineOptions.Clo.UseSubsumption;
+        case 0: return CoreOptions.SubsumptionOption.Never;
+        case 1: return CoreOptions.SubsumptionOption.NotForQuantifiers;
+        case 2: return CoreOptions.SubsumptionOption.Always;
+        default: return options.UseSubsumption;
       }
     }
 
@@ -305,10 +324,10 @@ namespace VC
         }
         else
         {
-          VCExpr currentWLP = RegExpr(cce.NonNull(ch.rs[0]), N, ctxt);
+          VCExpr currentWLP = RegExpr(Cce.NonNull(ch.rs[0]), N, ctxt);
           for (int i = 1, n = ch.rs.Count; i < n; i++)
           {
-            currentWLP = ctxt.Ctxt.ExprGen.And(currentWLP, RegExpr(cce.NonNull(ch.rs[i]), N, ctxt));
+            currentWLP = ctxt.Ctxt.ExprGen.And(currentWLP, RegExpr(Cce.NonNull(ch.rs[i]), N, ctxt));
           }
 
           res = currentWLP;
@@ -319,7 +338,7 @@ namespace VC
       else
       {
         Contract.Assert(false);
-        throw new cce.UnreachableException(); // unexpected RE subtype
+        throw new Cce.UnreachableException(); // unexpected RE subtype
       }
     }
   }

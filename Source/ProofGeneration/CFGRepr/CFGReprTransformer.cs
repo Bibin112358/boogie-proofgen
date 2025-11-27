@@ -102,7 +102,7 @@ namespace ProofGeneration.CFGRepresentation
 
                 var curOutgoing = new List<Block>();
 
-                if (block.TransferCmd is GotoCmd gotoCmd) curOutgoing.AddRange(gotoCmd.labelTargets);
+                if (block.TransferCmd is GotoCmd gotoCmd) curOutgoing.AddRange(gotoCmd.LabelTargets);
 
                 outgoingBlocks.Add(block, curOutgoing);
             }
@@ -127,8 +127,8 @@ namespace ProofGeneration.CFGRepresentation
                 var gtc = b.TransferCmd as GotoCmd;
                 if (gtc != null)
                 {
-                    Contract.Assert(gtc.labelTargets != null);
-                    foreach (var /*!*/ dest in gtc.labelTargets)
+                    Contract.Assert(gtc.LabelTargets != null);
+                    foreach (var /*!*/ dest in gtc.LabelTargets)
                     {
                         Contract.Assert(dest != null);
                         predecessors[dest].Add(b);
@@ -194,7 +194,7 @@ namespace ProofGeneration.CFGRepresentation
                 foreach (var cmd in b.Cmds)
                     if (cmd is SugaredCmd sugaredCmd && desugarCalls)
                     {
-                        var stateCmd = sugaredCmd.Desugaring as StateCmd;
+                        var stateCmd = sugaredCmd.GetDesugaring(ProofGenerationOptions.Clo) as StateCmd;
                         newVarsFromDesugaring.AddRange(stateCmd.Locals);
                         foreach (var desugaredCmd in stateCmd.Cmds) copyCmds.Add(copyCmd(desugaredCmd));
                     }
@@ -216,9 +216,9 @@ namespace ProofGeneration.CFGRepresentation
             {
                 if (copyBlock.TransferCmd is GotoCmd gtc)
                 {
-                    var newSuccessors = gtc.labelTargets.Select(succ => oldToNewBlock[succ]).ToList();
+                    var newSuccessors = gtc.LabelTargets.Select(succ => oldToNewBlock[succ]).ToList();
                     var gotoCmdCopy = (GotoCmd) CloneMethod.Invoke(gtc, null);
-                    gotoCmdCopy.labelTargets = newSuccessors;
+                    gotoCmdCopy.LabelTargets = newSuccessors;
                     copyBlock.TransferCmd = gotoCmdCopy;
                 }
                 else

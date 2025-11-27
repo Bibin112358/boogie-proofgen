@@ -1,0 +1,21 @@
+nesting.bpl(88,35): Error: this assertion could not be proved
+Execution trace:
+    nesting.bpl(60,3): anon0
+    nesting.bpl(61,5): anon17_Then
+    nesting.bpl(62,7): anon18_Then
+    nesting.bpl(63,9): anon19_Then
+    nesting.bpl(64,11): anon20_Then
+    nesting.bpl(65,13): anon21_Then
+    nesting.bpl(66,15): anon22_Then
+    nesting.bpl(67,17): anon23_Then
+    nesting.bpl(68,19): anon24_Then
+    nesting.bpl(69,21): anon25_Then
+    nesting.bpl(70,23): anon26_Then
+    nesting.bpl(71,25): anon27_Then
+    nesting.bpl(72,27): anon28_Then
+    nesting.bpl(73,29): anon29_Then
+    nesting.bpl(74,31): anon30_Then
+    nesting.bpl(75,33): anon31_Then
+    nesting.bpl(88,35): anon32_Then
+
+Boogie program verifier finished with 0 verified, 1 error

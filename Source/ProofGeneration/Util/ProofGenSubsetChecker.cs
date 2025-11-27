@@ -159,12 +159,7 @@ namespace ProofGeneration.Util
         #region civl
         
         //do not support concurrent intermediate verification language (CIVL) features
-        public override YieldCmd VisitYieldCmd(YieldCmd node)
-        {
-            problematicNode = node;
-            return node;
-        }
-        
+
         public override Cmd VisitParCallCmd(ParCallCmd node)
         {
             problematicNode = node;

@@ -2,7 +2,7 @@
 
 namespace Microsoft.Boogie.SMTLib
 {
-  static class Z3
+  public static class Z3
   {
     // Do not access this field directly! Use method GetVersion.
     private static Version Z3Version = null;
@@ -58,7 +58,7 @@ namespace Microsoft.Boogie.SMTLib
     public static string SmtRandomSeed = "smt.random_seed";
     public static string SatRandomSeed = "sat.random_seed";
     
-    public static void SetDefaultOptions(SMTLibProverOptions options)
+    public static void SetDefaultOptions(SMTLibSolverOptions options)
     {
       options.AddWeakSmtOption("smt.mbqi", "false"); // default: true
 

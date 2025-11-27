@@ -93,7 +93,7 @@ namespace ProofGeneration.ProgramToVCProof
         //Copied from Checker.cs. TODO: find better way of getting reordered declarations
         private static IEnumerable<Axiom> GetReorderedDeclarations(IEnumerable<Axiom> declarations)
         {
-          var seed = CommandLineOptions.Clo.RandomSeed;
+          var seed = ProofGenerationOptions.Clo.RandomSeed;
           var random = seed != null ? new Random(seed.Value) : null;
           return GetReorderedDeclarations(declarations, random);
         }
@@ -102,7 +102,7 @@ namespace ProofGeneration.ProgramToVCProof
         {
           if (random == null) {
             // By ordering the declarations based on their content and naming them based on order, the solver input stays content under reordering and renaming.
-            return CommandLineOptions.Clo.NormalizeDeclarationOrder
+            return ProofGenerationOptions.Clo.NormalizeDeclarationOrder
               ? declarations.OrderBy(d => d.ContentHash)
               : declarations;
           }

@@ -15,7 +15,7 @@ namespace Microsoft.Boogie
     /// </summary>
     /// <param name="a">The Absy node to be visited.</param>
     /// <returns> Returns null if node is null. Otherwise returns an updated node (possibly a different object).</returns>
-    public abstract Absy /*!*/ Visit(Absy /*!*/ node);
+    public abstract Absy Visit(Absy node);
 
     /// <summary>
     /// Transfers the state from one visitor to another. This enables separate visitor instances to cooperative process a single IR.
@@ -32,7 +32,7 @@ namespace Microsoft.Boogie
       {
         for (int i = 0, n = list.Count; i < n; i++)
         {
-          list[i] = (Expr) this.Visit(cce.NonNull(list[i]));
+          list[i] = (Expr) this.Visit(Cce.NonNull(list[i]));
         }
       }
 
@@ -78,6 +78,21 @@ namespace Microsoft.Boogie
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       node.Expr = this.VisitExpr(node.Expr);
+      VisitAttributes(node);
+      return node;
+    }
+    
+    public virtual Cmd VisitRevealCmd(HideRevealCmd node)
+    {
+      Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<Expr>() != null);
+      return node;
+    }
+    
+    public virtual Cmd VisitChangeScopeCmd(ChangeScope node)
+    {
+      Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<Expr>() != null);
       return node;
     }
 
@@ -87,18 +102,27 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<Cmd>() != null);
       for (int i = 0; i < node.Lhss.Count; ++i)
       {
-        node.SetLhs(i, cce.NonNull((AssignLhs) this.Visit(node.Lhss[i])));
-        node.SetRhs(i, cce.NonNull((Expr /*!*/) this.VisitExpr(node.Rhss[i])));
+        node.SetLhs(i, Cce.NonNull((AssignLhs) this.Visit(node.Lhss[i])));
+        node.SetRhs(i, Cce.NonNull((Expr) this.VisitExpr(node.Rhss[i])));
       }
-
+      VisitAttributes(node);
       return node;
     }
 
+    public virtual Cmd VisitUnpackCmd(UnpackCmd node)
+    {
+      node.Lhs = (NAryExpr)this.Visit(node.Lhs);
+      node.Rhs = (Expr)this.Visit(node.Rhs);
+      VisitAttributes(node);
+      return node;
+    }
+    
     public virtual Cmd VisitAssumeCmd(AssumeCmd node)
     {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       node.Expr = this.VisitExpr(node.Expr);
+      VisitAttributes(node);
       return node;
     }
 
@@ -167,7 +191,7 @@ namespace Microsoft.Boogie
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Block>() != null);
       node.Cmds = this.VisitCmdSeq(node.Cmds);
-      node.TransferCmd = (TransferCmd) this.Visit(cce.NonNull(node.TransferCmd));
+      node.TransferCmd = (TransferCmd) this.Visit(Cce.NonNull(node.TransferCmd));
       return node;
     }
 
@@ -188,14 +212,14 @@ namespace Microsoft.Boogie
       {
         for (int i = 0, n = blockSeq.Count; i < n; i++)
         {
-          blockSeq[i] = this.VisitBlock(cce.NonNull(blockSeq[i]));
+          blockSeq[i] = this.VisitBlock(Cce.NonNull(blockSeq[i]));
         }
       }
 
       return blockSeq;
     }
 
-    public virtual List<Block /*!*/> /*!*/ VisitBlockList(List<Block /*!*/> /*!*/ blocks)
+    public virtual IList<Block> VisitBlockList(IList<Block> blocks)
     {
       Contract.Requires(blocks != null);
       Contract.Ensures(Contract.Result<List<Block>>() != null);
@@ -223,7 +247,7 @@ namespace Microsoft.Boogie
       {
         if (node.Ins[i] != null)
         {
-          node.Ins[i] = this.VisitExpr(cce.NonNull(node.Ins[i]));
+          node.Ins[i] = this.VisitExpr(Cce.NonNull(node.Ins[i]));
         }
       }
 
@@ -231,11 +255,29 @@ namespace Microsoft.Boogie
       {
         if (node.Outs[i] != null)
         {
-          node.Outs[i] = (IdentifierExpr) this.VisitIdentifierExpr(cce.NonNull(node.Outs[i]));
+          node.Outs[i] = (IdentifierExpr) this.VisitIdentifierExpr(Cce.NonNull(node.Outs[i]));
         }
       }
-
+      VisitAttributes(node);
       return node;
+    }
+
+    public virtual List<CallCmd> VisitCallCmdSeq(List<CallCmd> callCmds)
+    {
+      for (int i = 0; i < callCmds.Count; i++)
+      {
+        callCmds[i] = (CallCmd)VisitCallCmd(callCmds[i]);
+      }
+      return callCmds;
+    }
+
+    public virtual List<AssertCmd> VisitAssertCmdSeq(List<AssertCmd> assertCmds)
+    {
+      for (int i = 0; i < assertCmds.Count; i++)
+      {
+        assertCmds[i] = (AssertCmd)VisitAssertCmd(assertCmds[i]);
+      }
+      return assertCmds;
     }
 
     public virtual Cmd VisitParCallCmd(ParCallCmd node)
@@ -249,7 +291,7 @@ namespace Microsoft.Boogie
           node.CallCmds[i] = (CallCmd) this.VisitCallCmd(node.CallCmds[i]);
         }
       }
-
+      VisitAttributes(node);
       return node;
     }
 
@@ -262,7 +304,7 @@ namespace Microsoft.Boogie
         for (int i = 0, n = cmdSeq.Count; i < n; i++)
         {
           cmdSeq[i] = (Cmd) this.Visit(
-            cce.NonNull(cmdSeq[i])); // call general Visit so subtypes of Cmd get visited by their particular visitor
+            Cce.NonNull(cmdSeq[i])); // call general Visit so subtypes of Cmd get visited by their particular visitor
         }
       }
 
@@ -299,7 +341,7 @@ namespace Microsoft.Boogie
       {
         for (int i = 0; i < node.Arguments.Count; ++i)
         {
-          node.Arguments[i] = cce.NonNull((Type /*!*/) this.Visit(node.Arguments[i]));
+          node.Arguments[i] = Cce.NonNull((Type) this.Visit(node.Arguments[i]));
         }
       }
 
@@ -313,13 +355,13 @@ namespace Microsoft.Boogie
       return node;
     }
 
-    public virtual List<Declaration /*!*/> /*!*/ VisitDeclarationList(List<Declaration /*!*/> /*!*/ declarationList)
+    public virtual List<Declaration> VisitDeclarationList(List<Declaration> declarationList)
     {
       Contract.Requires(declarationList != null);
       Contract.Ensures(Contract.Result<List<Declaration>>() != null);
       for (int i = 0, n = declarationList.Count; i < n; i++)
       {
-        declarationList[i] = cce.NonNull((Declaration /*!*/) this.Visit(declarationList[i]));
+        declarationList[i] = Cce.NonNull((Declaration) this.Visit(declarationList[i]));
       }
 
       return declarationList;
@@ -360,11 +402,10 @@ namespace Microsoft.Boogie
 
     public override IList<Expr> VisitExprSeq(IList<Expr> exprSeq)
     {
-      //Contract.Requires(exprSeq != null);
       Contract.Ensures(Contract.Result<IList<Expr>>() != null);
       for (int i = 0, n = exprSeq.Count; i < n; i++)
       {
-        exprSeq[i] = this.VisitExpr(cce.NonNull(exprSeq[i]));
+        exprSeq[i] = this.VisitExpr(Cce.NonNull(exprSeq[i]));
       }
 
       return exprSeq;
@@ -433,6 +474,7 @@ namespace Microsoft.Boogie
       node.Rhss = this.VisitExprSeq(node.Rhss);
       node.Dummies = this.VisitVariableSeq(node.Dummies);
       node.Body = this.VisitExpr(node.Body);
+      VisitAttributes(node);
       return node;
     }
 
@@ -457,7 +499,6 @@ namespace Microsoft.Boogie
       {
         node.DefinitionBody = (NAryExpr) this.VisitExpr(node.DefinitionBody);
       }
-
       return node;
     }
 
@@ -505,7 +546,7 @@ namespace Microsoft.Boogie
       {
         for (int i = 0, n = identifierExprSeq.Count; i < n; i++)
         {
-          identifierExprSeq[i] = (IdentifierExpr) this.VisitIdentifierExpr(cce.NonNull(identifierExprSeq[i]));
+          identifierExprSeq[i] = (IdentifierExpr) this.VisitIdentifierExpr(Cce.NonNull(identifierExprSeq[i]));
         }
       }
 
@@ -518,8 +559,9 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<Implementation>() != null);
       node.LocVars = this.VisitVariableSeq(node.LocVars);
       node.Blocks = this.VisitBlockList(node.Blocks);
-      node.Proc = this.VisitProcedure(cce.NonNull(node.Proc));
+      node.Proc = (Procedure)node.Proc.StdDispatch(this);
       node = (Implementation) this.VisitDeclWithFormals(node); // do this first or last?
+      VisitAttributes(node);
       return node;
     }
 
@@ -541,16 +583,24 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<AssignLhs>() != null);
-      node.Map = cce.NonNull((AssignLhs) this.Visit(node.Map));
+      node.Map = Cce.NonNull((AssignLhs) this.Visit(node.Map));
       for (int i = 0; i < node.Indexes.Count; ++i)
       {
-        node.Indexes[i] = cce.NonNull((Expr) this.VisitExpr(node.Indexes[i]));
+        node.Indexes[i] = Cce.NonNull((Expr) this.VisitExpr(node.Indexes[i]));
       }
 
       return node;
     }
 
-    public virtual MapType VisitMapType(MapType node)
+    public virtual AssignLhs VisitFieldAssignLhs(FieldAssignLhs node)
+    {
+      Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<AssignLhs>() != null);
+      node.Datatype = Cce.NonNull((AssignLhs) this.Visit(node.Datatype));
+      return node;
+    }
+    
+    public virtual Type VisitMapType(MapType node)
     {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<MapType>() != null);
@@ -563,11 +613,11 @@ namespace Microsoft.Boogie
       {
         for (int i = 0; i < node.Arguments.Count; ++i)
         {
-          node.Arguments[i] = cce.NonNull((Type /*!*/) this.Visit(node.Arguments[i]));
+          node.Arguments[i] = Cce.NonNull((Type) this.Visit(node.Arguments[i]));
         }
       }
 
-      node.Result = cce.NonNull((Type /*!*/) this.Visit(node.Result));
+      node.Result = Cce.NonNull((Type) this.Visit(node.Result));
       return node;
     }
 
@@ -610,9 +660,70 @@ namespace Microsoft.Boogie
       node.Modifies = this.VisitIdentifierExprSeq(node.Modifies);
       node.OutParams = this.VisitVariableSeq(node.OutParams);
       node.Requires = this.VisitRequiresSeq(node.Requires);
+      VisitAttributes(node);
       return node;
     }
 
+    public virtual ActionDeclRef VisitActionDeclRef(ActionDeclRef node)
+    {
+      return node;
+    }
+
+    public virtual Procedure VisitActionDecl(ActionDecl node)
+    {
+      for (int i = 0; i < node.Creates.Count; i++)
+      {
+        node.Creates[i] = VisitActionDeclRef(node.Creates[i]);
+      }
+      if (node.RefinedAction != null)
+      {
+        node.RefinedAction = VisitActionDeclRef(node.RefinedAction);
+      }
+      if (node.InvariantAction != null)
+      {
+        node.InvariantAction = VisitActionDeclRef(node.InvariantAction);
+      }
+      node.YieldRequires = VisitCallCmdSeq(node.YieldRequires);
+      node.Asserts = VisitAssertCmdSeq(node.Asserts);
+      return VisitProcedure(node);
+    }
+
+    public virtual YieldingLoop VisitYieldingLoop(YieldingLoop node)
+    {
+      node.YieldInvariants = VisitCallCmdSeq(node.YieldInvariants);
+      return node;
+    }
+
+    public virtual Dictionary<Block, YieldingLoop> VisitYieldingLoops(Dictionary<Block, YieldingLoop> node)
+    {
+      foreach (var block in node.Keys)
+      {
+        node[block] = VisitYieldingLoop(node[block]);
+      }
+      return node;
+    }
+
+    public virtual HashSet<Variable> VisitVariableSet(HashSet<Variable> node)
+    {
+      return node;
+    }
+
+    public virtual Procedure VisitYieldProcedureDecl(YieldProcedureDecl node)
+    {
+      node.YieldRequires = VisitCallCmdSeq(node.YieldRequires);
+      node.YieldEnsures = VisitCallCmdSeq(node.YieldEnsures);
+      node.YieldPreserves = VisitCallCmdSeq(node.YieldPreserves);
+      node.RefinedAction = VisitActionDeclRef(node.RefinedAction);
+      node.VisibleFormals = VisitVariableSet(node.VisibleFormals);
+      node.YieldingLoops = VisitYieldingLoops(node.YieldingLoops);
+      return VisitProcedure(node);
+    }
+
+    public virtual Procedure VisitYieldInvariantDecl(YieldInvariantDecl node)
+    {
+      return VisitProcedure(node);
+    }
+    
     public virtual Program VisitProgram(Program node)
     {
       Contract.Requires(node != null);
@@ -644,13 +755,14 @@ namespace Microsoft.Boogie
       return node;
     }
 
-    public virtual BinderExpr VisitBinderExpr(BinderExpr node)
+    public virtual Expr VisitBinderExpr(BinderExpr node)
     {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<BinderExpr>() != null);
       node.Body = this.VisitExpr(node.Body);
       node.Dummies = this.VisitVariableSeq(node.Dummies);
       //node.Type = this.VisitType(node.Type);
+      VisitAttributes(node);
       return node;
     }
 
@@ -658,7 +770,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<QuantifierExpr>() != null);
-      node = cce.NonNull((QuantifierExpr) this.VisitBinderExpr(node));
+      node = Cce.NonNull((QuantifierExpr) this.VisitBinderExpr(node));
       if (node.Triggers != null)
       {
         node.Triggers = this.VisitTrigger(node.Triggers);
@@ -680,7 +792,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<List<RE>>() != null);
       for (int i = 0, n = reSeq.Count; i < n; i++)
       {
-        reSeq[i] = (RE) this.VisitRE(cce.NonNull(reSeq[i]));
+        reSeq[i] = (RE) this.VisitRE(Cce.NonNull(reSeq[i]));
       }
 
       return reSeq;
@@ -781,12 +893,12 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Type>() != null);
-      node.ExpandedType = cce.NonNull((Type /*!*/) this.Visit(node.ExpandedType));
+      node.ExpandedType = Cce.NonNull((Type) this.Visit(node.ExpandedType));
       lock (node.Arguments)
       {
         for (int i = 0; i < node.Arguments.Count; ++i)
         {
-          node.Arguments[i] = cce.NonNull((Type /*!*/) this.Visit(node.Arguments[i]));
+          node.Arguments[i] = Cce.NonNull((Type) this.Visit(node.Arguments[i]));
         }
       }
 
@@ -815,7 +927,7 @@ namespace Microsoft.Boogie
       // specific type, we visit the instantiation
       if (node.ProxyFor != null)
       {
-        return cce.NonNull((Type /*!*/) this.Visit(node.ProxyFor));
+        return Cce.NonNull((Type) this.Visit(node.ProxyFor));
       }
 
       return this.VisitType(node);
@@ -844,18 +956,11 @@ namespace Microsoft.Boogie
       {
         for (int i = 0, n = variableSeq.Count; i < n; i++)
         {
-          variableSeq[i] = this.VisitVariable(cce.NonNull(variableSeq[i]));
+          variableSeq[i] = this.VisitVariable(Cce.NonNull(variableSeq[i]));
         }
       }
 
       return variableSeq;
-    }
-
-    public virtual YieldCmd VisitYieldCmd(YieldCmd node)
-    {
-      Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<YieldCmd>() != null);
-      return node;
     }
 
     public virtual Cmd VisitAssertEnsuresCmd(AssertEnsuresCmd node)
@@ -864,6 +969,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<Cmd>() != null);
       node.Ensures = this.VisitEnsures(node.Ensures);
       node.Expr = this.VisitExpr(node.Expr);
+      VisitAttributes(node);
       return node;
     }
 
@@ -873,7 +979,24 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<Cmd>() != null);
       node.Requires = this.VisitRequires(node.Requires);
       node.Expr = this.VisitExpr(node.Expr);
+      VisitAttributes(node);
       return node;
+    }
+
+    /*
+     * VisitAttributes is being called in the visitor of those subtypes of Cmd
+     * and Expr that implement ICarriesAttributes. This behavior is introduced so
+     * that hints for pool-based quantifier instantiation present in attributes
+     * are processed naturally during monomorphization and inlining. There
+     * are other subtypes of Absy that implement ICarriesAttributes; if
+     * necessary, this method could be in the visitor for those types also.
+     */
+    private void VisitAttributes(ICarriesAttributes node)
+    {
+      if (node.Attributes != null)
+      {
+        node.Attributes = VisitQKeyValue(node.Attributes);
+      }
     }
   }
 
@@ -935,7 +1058,13 @@ namespace Microsoft.Boogie
         this.Visit(node.Lhss[i]);
         this.VisitExpr(node.Rhss[i]);
       }
+      return node;
+    }
 
+    public override Cmd VisitUnpackCmd(UnpackCmd node)
+    {
+      this.VisitExpr(node.Lhs);
+      this.VisitExpr(node.Rhs);
       return node;
     }
 
@@ -997,7 +1126,7 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<Block>() == node);
       this.VisitCmdSeq(node.Cmds);
-      this.Visit(cce.NonNull(node.TransferCmd));
+      this.Visit(Cce.NonNull(node.TransferCmd));
       return node;
     }
 
@@ -1014,20 +1143,18 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<List<Block>>() == blockSeq);
       for (int i = 0, n = blockSeq.Count; i < n; i++)
       {
-        this.VisitBlock(cce.NonNull(blockSeq[i]));
+        this.VisitBlock(Cce.NonNull(blockSeq[i]));
       }
 
       return blockSeq;
     }
 
-    public override List<Block /*!*/> /*!*/ VisitBlockList(List<Block /*!*/> /*!*/ blocks)
+    public override IList<Block> VisitBlockList(IList<Block> blocks)
     {
       Contract.Ensures(Contract.Result<List<Block>>() == blocks);
-      for (int i = 0, n = blocks.Count; i < n; i++)
-      {
-        this.VisitBlock(blocks[i]);
+      foreach (var block in blocks) {
+        this.VisitBlock(block);
       }
-
       return blocks;
     }
 
@@ -1078,7 +1205,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<List<Cmd>>() == cmdSeq);
       for (int i = 0, n = cmdSeq.Count; i < n; i++)
       {
-        this.Visit(cce.NonNull(
+        this.Visit(Cce.NonNull(
           cmdSeq[i])); // call general Visit so subtypes of Cmd get visited by their particular visitor
       }
 
@@ -1121,7 +1248,7 @@ namespace Microsoft.Boogie
       return node;
     }
 
-    public override List<Declaration /*!*/> /*!*/ VisitDeclarationList(List<Declaration /*!*/> /*!*/ declarationList)
+    public override List<Declaration> VisitDeclarationList(List<Declaration> declarationList)
     {
       Contract.Ensures(Contract.Result<List<Declaration>>() == declarationList);
       for (int i = 0, n = declarationList.Count; i < n; i++)
@@ -1164,7 +1291,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<IList<Expr>>() == exprSeq);
       for (int i = 0, n = exprSeq.Count; i < n; i++)
       {
-        this.VisitExpr(cce.NonNull(exprSeq[i]));
+        this.VisitExpr(Cce.NonNull(exprSeq[i]));
       }
 
       return exprSeq;
@@ -1285,7 +1412,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<List<IdentifierExpr>>() == identifierExprSeq);
       for (int i = 0, n = identifierExprSeq.Count; i < n; i++)
       {
-        this.VisitIdentifierExpr(cce.NonNull(identifierExprSeq[i]));
+        this.VisitIdentifierExpr(Cce.NonNull(identifierExprSeq[i]));
       }
 
       return identifierExprSeq;
@@ -1296,7 +1423,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<Implementation>() == node);
       this.VisitVariableSeq(node.LocVars);
       this.VisitBlockList(node.Blocks);
-      this.VisitProcedure(cce.NonNull(node.Proc));
+      node.Proc = (Procedure)node.Proc.StdDispatch(this);
       return (Implementation) this.VisitDeclWithFormals(node); // do this first or last?
     }
 
@@ -1324,7 +1451,7 @@ namespace Microsoft.Boogie
       return node;
     }
 
-    public override MapType VisitMapType(MapType node)
+    public override Type VisitMapType(MapType node)
     {
       Contract.Ensures(Contract.Result<MapType>() == node);
       // not doing anything about the bound variables ... maybe
@@ -1406,7 +1533,7 @@ namespace Microsoft.Boogie
       return node;
     }
 
-    public override BinderExpr VisitBinderExpr(BinderExpr node)
+    public override Expr VisitBinderExpr(BinderExpr node)
     {
       Contract.Ensures(Contract.Result<BinderExpr>() == node);
       this.VisitExpr(node.Body);
@@ -1438,7 +1565,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<List<RE>>() == reSeq);
       for (int i = 0, n = reSeq.Count; i < n; i++)
       {
-        this.VisitRE(cce.NonNull(reSeq[i]));
+        this.VisitRE(Cce.NonNull(reSeq[i]));
       }
 
       return reSeq;
@@ -1522,7 +1649,7 @@ namespace Microsoft.Boogie
     public override Type VisitTypeSynonymAnnotation(TypeSynonymAnnotation node)
     {
       Contract.Ensures(Contract.Result<Type>() == node);
-      node.ExpandedType = cce.NonNull((Type /*!*/) this.Visit(node.ExpandedType));
+      node.ExpandedType = Cce.NonNull((Type) this.Visit(node.ExpandedType));
       for (int i = 0; i < node.Arguments.Count; ++i)
       {
         this.Visit(node.Arguments[i]);
@@ -1574,16 +1701,10 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<List<Variable>>() == variableSeq);
       for (int i = 0, n = variableSeq.Count; i < n; i++)
       {
-        this.VisitVariable(cce.NonNull(variableSeq[i]));
+        this.VisitVariable(Cce.NonNull(variableSeq[i]));
       }
 
       return variableSeq;
-    }
-
-    public override YieldCmd VisitYieldCmd(YieldCmd node)
-    {
-      Contract.Ensures(Contract.Result<YieldCmd>() == node);
-      return node;
     }
 
     public override Cmd VisitAssertEnsuresCmd(AssertEnsuresCmd node)

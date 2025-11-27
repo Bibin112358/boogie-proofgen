@@ -1,5 +1,8 @@
-// RUN: %parallel-boogie -useArrayTheory /errorTrace:0 "%s" > "%t"
+// RUN: %parallel-boogie /errorTrace:0 /timeLimit:120 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+
+// Stress test that we really don't need ot run multiple times
+// UNSUPPORTED: batch_mode
 
 var raiseException : bool;
 var errorReached : bool;
@@ -52,764 +55,764 @@ var Mem_0_T.StackCount__IRP : [int]int;
 // Field offset definitions
 
 function AllocatedResourcesTranslated___unnamed_8_634fb90c(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {AllocatedResourcesTranslated___unnamed_8_634fb90c(x)} AllocatedResourcesTranslated___unnamed_8_634fb90c(x) == x + 4);
 axiom (forall x:int :: {AllocatedResourcesTranslated___unnamed_8_634fb90c(x)} AllocatedResourcesTranslated___unnamed_8_634fb90c(x) == INT_ADD(x, 4));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function AllocatedResources___unnamed_8_634fb90c(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {AllocatedResources___unnamed_8_634fb90c(x)} AllocatedResources___unnamed_8_634fb90c(x) == x + 0);
 axiom (forall x:int :: {AllocatedResources___unnamed_8_634fb90c(x)} AllocatedResources___unnamed_8_634fb90c(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function BDDBuildNumber__BDL_INTERNAL_DEVICE_EXTENSION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {BDDBuildNumber__BDL_INTERNAL_DEVICE_EXTENSION(x)} BDDBuildNumber__BDL_INTERNAL_DEVICE_EXTENSION(x) == x + 1364);
 axiom (forall x:int :: {BDDBuildNumber__BDL_INTERNAL_DEVICE_EXTENSION(x)} BDDBuildNumber__BDL_INTERNAL_DEVICE_EXTENSION(x) == INT_ADD(x, 1364));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function BDDBuildNumber__BDSI_INITIALIZERESOURCES(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {BDDBuildNumber__BDSI_INITIALIZERESOURCES(x)} BDDBuildNumber__BDSI_INITIALIZERESOURCES(x) == x + 544);
 axiom (forall x:int :: {BDDBuildNumber__BDSI_INITIALIZERESOURCES(x)} BDDBuildNumber__BDSI_INITIALIZERESOURCES(x) == INT_ADD(x, 544));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function BDDVersionMajor__BDL_INTERNAL_DEVICE_EXTENSION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {BDDVersionMajor__BDL_INTERNAL_DEVICE_EXTENSION(x)} BDDVersionMajor__BDL_INTERNAL_DEVICE_EXTENSION(x) == x + 1356);
 axiom (forall x:int :: {BDDVersionMajor__BDL_INTERNAL_DEVICE_EXTENSION(x)} BDDVersionMajor__BDL_INTERNAL_DEVICE_EXTENSION(x) == INT_ADD(x, 1356));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function BDDVersionMajor__BDSI_INITIALIZERESOURCES(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {BDDVersionMajor__BDSI_INITIALIZERESOURCES(x)} BDDVersionMajor__BDSI_INITIALIZERESOURCES(x) == x + 536);
 axiom (forall x:int :: {BDDVersionMajor__BDSI_INITIALIZERESOURCES(x)} BDDVersionMajor__BDSI_INITIALIZERESOURCES(x) == INT_ADD(x, 536));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function BDDVersionMinor__BDL_INTERNAL_DEVICE_EXTENSION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {BDDVersionMinor__BDL_INTERNAL_DEVICE_EXTENSION(x)} BDDVersionMinor__BDL_INTERNAL_DEVICE_EXTENSION(x) == x + 1360);
 axiom (forall x:int :: {BDDVersionMinor__BDL_INTERNAL_DEVICE_EXTENSION(x)} BDDVersionMinor__BDL_INTERNAL_DEVICE_EXTENSION(x) == INT_ADD(x, 1360));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function BDDVersionMinor__BDSI_INITIALIZERESOURCES(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {BDDVersionMinor__BDSI_INITIALIZERESOURCES(x)} BDDVersionMinor__BDSI_INITIALIZERESOURCES(x) == x + 540);
 axiom (forall x:int :: {BDDVersionMinor__BDSI_INITIALIZERESOURCES(x)} BDDVersionMinor__BDSI_INITIALIZERESOURCES(x) == INT_ADD(x, 540));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function BdlExtenstion__BDL_INTERNAL_DEVICE_EXTENSION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {BdlExtenstion__BDL_INTERNAL_DEVICE_EXTENSION(x)} BdlExtenstion__BDL_INTERNAL_DEVICE_EXTENSION(x) == x + 0);
 axiom (forall x:int :: {BdlExtenstion__BDL_INTERNAL_DEVICE_EXTENSION(x)} BdlExtenstion__BDL_INTERNAL_DEVICE_EXTENSION(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Blink__LIST_ENTRY(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {Blink__LIST_ENTRY(x)} Blink__LIST_ENTRY(x) == x + 4);
 axiom (forall x:int :: {Blink__LIST_ENTRY(x)} Blink__LIST_ENTRY(x) == INT_ADD(x, 4));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Block__BDDI_ITEM_DATA(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {Block__BDDI_ITEM_DATA(x)} Block__BDDI_ITEM_DATA(x) == x + 0);
 axiom (forall x:int :: {Block__BDDI_ITEM_DATA(x)} Block__BDDI_ITEM_DATA(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function CancelIrql__IRP(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {CancelIrql__IRP(x)} CancelIrql__IRP(x) == x + 37);
 axiom (forall x:int :: {CancelIrql__IRP(x)} CancelIrql__IRP(x) == INT_ADD(x, 37));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function CancelRoutine__IRP(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {CancelRoutine__IRP(x)} CancelRoutine__IRP(x) == x + 56);
 axiom (forall x:int :: {CancelRoutine__IRP(x)} CancelRoutine__IRP(x) == INT_ADD(x, 56));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Cancel__IRP(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {Cancel__IRP(x)} Cancel__IRP(x) == x + 36);
 axiom (forall x:int :: {Cancel__IRP(x)} Cancel__IRP(x) == INT_ADD(x, 36));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function ChannelId__BDDI_PARAMS_REGISTERNOTIFY(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {ChannelId__BDDI_PARAMS_REGISTERNOTIFY(x)} ChannelId__BDDI_PARAMS_REGISTERNOTIFY(x) == x + 12);
 axiom (forall x:int :: {ChannelId__BDDI_PARAMS_REGISTERNOTIFY(x)} ChannelId__BDDI_PARAMS_REGISTERNOTIFY(x) == INT_ADD(x, 12));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function ChannelId__BDL_CONTROL_CHANGE_REGISTRATION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {ChannelId__BDL_CONTROL_CHANGE_REGISTRATION(x)} ChannelId__BDL_CONTROL_CHANGE_REGISTRATION(x) == x + 4);
 axiom (forall x:int :: {ChannelId__BDL_CONTROL_CHANGE_REGISTRATION(x)} ChannelId__BDL_CONTROL_CHANGE_REGISTRATION(x) == INT_ADD(x, 4));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function CompletionRoutine__IO_STACK_LOCATION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {CompletionRoutine__IO_STACK_LOCATION(x)} CompletionRoutine__IO_STACK_LOCATION(x) == x + 28);
 axiom (forall x:int :: {CompletionRoutine__IO_STACK_LOCATION(x)} CompletionRoutine__IO_STACK_LOCATION(x) == INT_ADD(x, 28));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function ComponentId__BDDI_PARAMS_REGISTERNOTIFY(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {ComponentId__BDDI_PARAMS_REGISTERNOTIFY(x)} ComponentId__BDDI_PARAMS_REGISTERNOTIFY(x) == x + 8);
 axiom (forall x:int :: {ComponentId__BDDI_PARAMS_REGISTERNOTIFY(x)} ComponentId__BDDI_PARAMS_REGISTERNOTIFY(x) == INT_ADD(x, 8));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function ComponentId__BDL_CONTROL_CHANGE_REGISTRATION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {ComponentId__BDL_CONTROL_CHANGE_REGISTRATION(x)} ComponentId__BDL_CONTROL_CHANGE_REGISTRATION(x) == x + 0);
 axiom (forall x:int :: {ComponentId__BDL_CONTROL_CHANGE_REGISTRATION(x)} ComponentId__BDL_CONTROL_CHANGE_REGISTRATION(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Context__IO_STACK_LOCATION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {Context__IO_STACK_LOCATION(x)} Context__IO_STACK_LOCATION(x) == x + 32);
 axiom (forall x:int :: {Context__IO_STACK_LOCATION(x)} Context__IO_STACK_LOCATION(x) == INT_ADD(x, 32));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function ControlChangeLock__BDL_CONTROL_CHANGE_STRUCT(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {ControlChangeLock__BDL_CONTROL_CHANGE_STRUCT(x)} ControlChangeLock__BDL_CONTROL_CHANGE_STRUCT(x) == x + 620);
 axiom (forall x:int :: {ControlChangeLock__BDL_CONTROL_CHANGE_STRUCT(x)} ControlChangeLock__BDL_CONTROL_CHANGE_STRUCT(x) == INT_ADD(x, 620));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function ControlChangeRegistrationList__BDL_CONTROL_CHANGE_STRUCT(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {ControlChangeRegistrationList__BDL_CONTROL_CHANGE_STRUCT(x)} ControlChangeRegistrationList__BDL_CONTROL_CHANGE_STRUCT(x) == x + 636);
 axiom (forall x:int :: {ControlChangeRegistrationList__BDL_CONTROL_CHANGE_STRUCT(x)} ControlChangeRegistrationList__BDL_CONTROL_CHANGE_STRUCT(x) == INT_ADD(x, 636));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function ControlChangeStruct__BDL_INTERNAL_DEVICE_EXTENSION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {ControlChangeStruct__BDL_INTERNAL_DEVICE_EXTENSION(x)} ControlChangeStruct__BDL_INTERNAL_DEVICE_EXTENSION(x) == x + 160);
 axiom (forall x:int :: {ControlChangeStruct__BDL_INTERNAL_DEVICE_EXTENSION(x)} ControlChangeStruct__BDL_INTERNAL_DEVICE_EXTENSION(x) == INT_ADD(x, 160));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function ControlId__BDDI_PARAMS_REGISTERNOTIFY(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {ControlId__BDDI_PARAMS_REGISTERNOTIFY(x)} ControlId__BDDI_PARAMS_REGISTERNOTIFY(x) == x + 16);
 axiom (forall x:int :: {ControlId__BDDI_PARAMS_REGISTERNOTIFY(x)} ControlId__BDDI_PARAMS_REGISTERNOTIFY(x) == INT_ADD(x, 16));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function ControlId__BDL_CONTROL_CHANGE_REGISTRATION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {ControlId__BDL_CONTROL_CHANGE_REGISTRATION(x)} ControlId__BDL_CONTROL_CHANGE_REGISTRATION(x) == x + 8);
 axiom (forall x:int :: {ControlId__BDL_CONTROL_CHANGE_REGISTRATION(x)} ControlId__BDL_CONTROL_CHANGE_REGISTRATION(x) == INT_ADD(x, 8));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Control__IO_STACK_LOCATION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {Control__IO_STACK_LOCATION(x)} Control__IO_STACK_LOCATION(x) == x + 3);
 axiom (forall x:int :: {Control__IO_STACK_LOCATION(x)} Control__IO_STACK_LOCATION(x) == INT_ADD(x, 3));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function CurrentLocation__IRP(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {CurrentLocation__IRP(x)} CurrentLocation__IRP(x) == x + 35);
 axiom (forall x:int :: {CurrentLocation__IRP(x)} CurrentLocation__IRP(x) == INT_ADD(x, 35));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function CurrentStackLocation___unnamed_12_3a099e68(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {CurrentStackLocation___unnamed_12_3a099e68(x)} CurrentStackLocation___unnamed_12_3a099e68(x) == x + 8);
 axiom (forall x:int :: {CurrentStackLocation___unnamed_12_3a099e68(x)} CurrentStackLocation___unnamed_12_3a099e68(x) == INT_ADD(x, 8));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Data__BDDI_ITEM(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {Data__BDDI_ITEM(x)} Data__BDDI_ITEM(x) == x + 4);
 axiom (forall x:int :: {Data__BDDI_ITEM(x)} Data__BDDI_ITEM(x) == INT_ADD(x, 4));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function DeviceCapabilities__BDL_INTERNAL_DEVICE_EXTENSION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {DeviceCapabilities__BDL_INTERNAL_DEVICE_EXTENSION(x)} DeviceCapabilities__BDL_INTERNAL_DEVICE_EXTENSION(x) == x + 140);
 axiom (forall x:int :: {DeviceCapabilities__BDL_INTERNAL_DEVICE_EXTENSION(x)} DeviceCapabilities__BDL_INTERNAL_DEVICE_EXTENSION(x) == INT_ADD(x, 140));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function DeviceExtension__DEVICE_OBJECT(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {DeviceExtension__DEVICE_OBJECT(x)} DeviceExtension__DEVICE_OBJECT(x) == x + 40);
 axiom (forall x:int :: {DeviceExtension__DEVICE_OBJECT(x)} DeviceExtension__DEVICE_OBJECT(x) == INT_ADD(x, 40));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function DeviceObject__IO_STACK_LOCATION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {DeviceObject__IO_STACK_LOCATION(x)} DeviceObject__IO_STACK_LOCATION(x) == x + 20);
 axiom (forall x:int :: {DeviceObject__IO_STACK_LOCATION(x)} DeviceObject__IO_STACK_LOCATION(x) == INT_ADD(x, 20));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function DeviceOpen__BDL_INTERNAL_DEVICE_EXTENSION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {DeviceOpen__BDL_INTERNAL_DEVICE_EXTENSION(x)} DeviceOpen__BDL_INTERNAL_DEVICE_EXTENSION(x) == x + 136);
 axiom (forall x:int :: {DeviceOpen__BDL_INTERNAL_DEVICE_EXTENSION(x)} DeviceOpen__BDL_INTERNAL_DEVICE_EXTENSION(x) == INT_ADD(x, 136));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function DeviceStartedEvent__BDL_INTERNAL_DEVICE_EXTENSION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {DeviceStartedEvent__BDL_INTERNAL_DEVICE_EXTENSION(x)} DeviceStartedEvent__BDL_INTERNAL_DEVICE_EXTENSION(x) == x + 28);
 axiom (forall x:int :: {DeviceStartedEvent__BDL_INTERNAL_DEVICE_EXTENSION(x)} DeviceStartedEvent__BDL_INTERNAL_DEVICE_EXTENSION(x) == INT_ADD(x, 28));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function DeviceState__POWER_STATE(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {DeviceState__POWER_STATE(x)} DeviceState__POWER_STATE(x) == x + 0);
 axiom (forall x:int :: {DeviceState__POWER_STATE(x)} DeviceState__POWER_STATE(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Flink__LIST_ENTRY(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {Flink__LIST_ENTRY(x)} Flink__LIST_ENTRY(x) == x + 0);
 axiom (forall x:int :: {Flink__LIST_ENTRY(x)} Flink__LIST_ENTRY(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function HWBuildNumber__BDL_INTERNAL_DEVICE_EXTENSION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {HWBuildNumber__BDL_INTERNAL_DEVICE_EXTENSION(x)} HWBuildNumber__BDL_INTERNAL_DEVICE_EXTENSION(x) == x + 1352);
 axiom (forall x:int :: {HWBuildNumber__BDL_INTERNAL_DEVICE_EXTENSION(x)} HWBuildNumber__BDL_INTERNAL_DEVICE_EXTENSION(x) == INT_ADD(x, 1352));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function HWBuildNumber__BDSI_INITIALIZERESOURCES(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {HWBuildNumber__BDSI_INITIALIZERESOURCES(x)} HWBuildNumber__BDSI_INITIALIZERESOURCES(x) == x + 532);
 axiom (forall x:int :: {HWBuildNumber__BDSI_INITIALIZERESOURCES(x)} HWBuildNumber__BDSI_INITIALIZERESOURCES(x) == INT_ADD(x, 532));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function HWVersionMajor__BDL_INTERNAL_DEVICE_EXTENSION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {HWVersionMajor__BDL_INTERNAL_DEVICE_EXTENSION(x)} HWVersionMajor__BDL_INTERNAL_DEVICE_EXTENSION(x) == x + 1344);
 axiom (forall x:int :: {HWVersionMajor__BDL_INTERNAL_DEVICE_EXTENSION(x)} HWVersionMajor__BDL_INTERNAL_DEVICE_EXTENSION(x) == INT_ADD(x, 1344));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function HWVersionMajor__BDSI_INITIALIZERESOURCES(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {HWVersionMajor__BDSI_INITIALIZERESOURCES(x)} HWVersionMajor__BDSI_INITIALIZERESOURCES(x) == x + 524);
 axiom (forall x:int :: {HWVersionMajor__BDSI_INITIALIZERESOURCES(x)} HWVersionMajor__BDSI_INITIALIZERESOURCES(x) == INT_ADD(x, 524));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function HWVersionMinor__BDL_INTERNAL_DEVICE_EXTENSION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {HWVersionMinor__BDL_INTERNAL_DEVICE_EXTENSION(x)} HWVersionMinor__BDL_INTERNAL_DEVICE_EXTENSION(x) == x + 1348);
 axiom (forall x:int :: {HWVersionMinor__BDL_INTERNAL_DEVICE_EXTENSION(x)} HWVersionMinor__BDL_INTERNAL_DEVICE_EXTENSION(x) == INT_ADD(x, 1348));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function HWVersionMinor__BDSI_INITIALIZERESOURCES(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {HWVersionMinor__BDSI_INITIALIZERESOURCES(x)} HWVersionMinor__BDSI_INITIALIZERESOURCES(x) == x + 528);
 axiom (forall x:int :: {HWVersionMinor__BDSI_INITIALIZERESOURCES(x)} HWVersionMinor__BDSI_INITIALIZERESOURCES(x) == INT_ADD(x, 528));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function HandleListLock__BDL_INTERNAL_DEVICE_EXTENSION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {HandleListLock__BDL_INTERNAL_DEVICE_EXTENSION(x)} HandleListLock__BDL_INTERNAL_DEVICE_EXTENSION(x) == x + 816);
 axiom (forall x:int :: {HandleListLock__BDL_INTERNAL_DEVICE_EXTENSION(x)} HandleListLock__BDL_INTERNAL_DEVICE_EXTENSION(x) == INT_ADD(x, 816));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function HandleList__BDL_INTERNAL_DEVICE_EXTENSION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {HandleList__BDL_INTERNAL_DEVICE_EXTENSION(x)} HandleList__BDL_INTERNAL_DEVICE_EXTENSION(x) == x + 820);
 axiom (forall x:int :: {HandleList__BDL_INTERNAL_DEVICE_EXTENSION(x)} HandleList__BDL_INTERNAL_DEVICE_EXTENSION(x) == INT_ADD(x, 820));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Handle__BDDI_ITEM_DATA(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {Handle__BDDI_ITEM_DATA(x)} Handle__BDDI_ITEM_DATA(x) == x + 0);
 axiom (forall x:int :: {Handle__BDDI_ITEM_DATA(x)} Handle__BDDI_ITEM_DATA(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function IOCTLControlChangeQueue__BDL_CONTROL_CHANGE_STRUCT(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {IOCTLControlChangeQueue__BDL_CONTROL_CHANGE_STRUCT(x)} IOCTLControlChangeQueue__BDL_CONTROL_CHANGE_STRUCT(x) == x + 624);
 axiom (forall x:int :: {IOCTLControlChangeQueue__BDL_CONTROL_CHANGE_STRUCT(x)} IOCTLControlChangeQueue__BDL_CONTROL_CHANGE_STRUCT(x) == INT_ADD(x, 624));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function ISRControlChangeLock__BDL_CONTROL_CHANGE_STRUCT(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {ISRControlChangeLock__BDL_CONTROL_CHANGE_STRUCT(x)} ISRControlChangeLock__BDL_CONTROL_CHANGE_STRUCT(x) == x + 0);
 axiom (forall x:int :: {ISRControlChangeLock__BDL_CONTROL_CHANGE_STRUCT(x)} ISRControlChangeLock__BDL_CONTROL_CHANGE_STRUCT(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function ISRControlChangeQueue__BDL_CONTROL_CHANGE_STRUCT(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {ISRControlChangeQueue__BDL_CONTROL_CHANGE_STRUCT(x)} ISRControlChangeQueue__BDL_CONTROL_CHANGE_STRUCT(x) == x + 36);
 axiom (forall x:int :: {ISRControlChangeQueue__BDL_CONTROL_CHANGE_STRUCT(x)} ISRControlChangeQueue__BDL_CONTROL_CHANGE_STRUCT(x) == INT_ADD(x, 36));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Information__IO_STATUS_BLOCK(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {Information__IO_STATUS_BLOCK(x)} Information__IO_STATUS_BLOCK(x) == x + 4);
 axiom (forall x:int :: {Information__IO_STATUS_BLOCK(x)} Information__IO_STATUS_BLOCK(x) == INT_ADD(x, 4));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function IoCount__BDL_INTERNAL_DEVICE_EXTENSION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {IoCount__BDL_INTERNAL_DEVICE_EXTENSION(x)} IoCount__BDL_INTERNAL_DEVICE_EXTENSION(x) == x + 44);
 axiom (forall x:int :: {IoCount__BDL_INTERNAL_DEVICE_EXTENSION(x)} IoCount__BDL_INTERNAL_DEVICE_EXTENSION(x) == INT_ADD(x, 44));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function IoStatus__IRP(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {IoStatus__IRP(x)} IoStatus__IRP(x) == x + 24);
 axiom (forall x:int :: {IoStatus__IRP(x)} IoStatus__IRP(x) == INT_ADD(x, 24));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function MajorFunction__IO_STACK_LOCATION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {MajorFunction__IO_STACK_LOCATION(x)} MajorFunction__IO_STACK_LOCATION(x) == x + 0);
 axiom (forall x:int :: {MajorFunction__IO_STACK_LOCATION(x)} MajorFunction__IO_STACK_LOCATION(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function MinorFunction__IO_STACK_LOCATION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {MinorFunction__IO_STACK_LOCATION(x)} MinorFunction__IO_STACK_LOCATION(x) == x + 1);
 axiom (forall x:int :: {MinorFunction__IO_STACK_LOCATION(x)} MinorFunction__IO_STACK_LOCATION(x) == INT_ADD(x, 1));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function NumChannels__BDL_COMPONENT(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {NumChannels__BDL_COMPONENT(x)} NumChannels__BDL_COMPONENT(x) == x + 12);
 axiom (forall x:int :: {NumChannels__BDL_COMPONENT(x)} NumChannels__BDL_COMPONENT(x) == INT_ADD(x, 12));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function NumComponents__BDL_DEVICE_CAPABILITIES(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {NumComponents__BDL_DEVICE_CAPABILITIES(x)} NumComponents__BDL_DEVICE_CAPABILITIES(x) == x + 8);
 axiom (forall x:int :: {NumComponents__BDL_DEVICE_CAPABILITIES(x)} NumComponents__BDL_DEVICE_CAPABILITIES(x) == INT_ADD(x, 8));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function NumHandles_HANDLELIST_(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {NumHandles_HANDLELIST_(x)} NumHandles_HANDLELIST_(x) == x + 8);
 axiom (forall x:int :: {NumHandles_HANDLELIST_(x)} NumHandles_HANDLELIST_(x) == INT_ADD(x, 8));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Overlay___unnamed_48_7c673e0a(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {Overlay___unnamed_48_7c673e0a(x)} Overlay___unnamed_48_7c673e0a(x) == x + 0);
 axiom (forall x:int :: {Overlay___unnamed_48_7c673e0a(x)} Overlay___unnamed_48_7c673e0a(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Parameters__IO_STACK_LOCATION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {Parameters__IO_STACK_LOCATION(x)} Parameters__IO_STACK_LOCATION(x) == x + 4);
 axiom (forall x:int :: {Parameters__IO_STACK_LOCATION(x)} Parameters__IO_STACK_LOCATION(x) == INT_ADD(x, 4));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function PendingReturned__IRP(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {PendingReturned__IRP(x)} PendingReturned__IRP(x) == x + 33);
 axiom (forall x:int :: {PendingReturned__IRP(x)} PendingReturned__IRP(x) == INT_ADD(x, 33));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function PowerState__BDSI_SETPOWERSTATE(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {PowerState__BDSI_SETPOWERSTATE(x)} PowerState__BDSI_SETPOWERSTATE(x) == x + 4);
 axiom (forall x:int :: {PowerState__BDSI_SETPOWERSTATE(x)} PowerState__BDSI_SETPOWERSTATE(x) == INT_ADD(x, 4));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Power___unnamed_16_357c4db4(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {Power___unnamed_16_357c4db4(x)} Power___unnamed_16_357c4db4(x) == x + 0);
 axiom (forall x:int :: {Power___unnamed_16_357c4db4(x)} Power___unnamed_16_357c4db4(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function RemoveLock__BDL_INTERNAL_DEVICE_EXTENSION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {RemoveLock__BDL_INTERNAL_DEVICE_EXTENSION(x)} RemoveLock__BDL_INTERNAL_DEVICE_EXTENSION(x) == x + 48);
 axiom (forall x:int :: {RemoveLock__BDL_INTERNAL_DEVICE_EXTENSION(x)} RemoveLock__BDL_INTERNAL_DEVICE_EXTENSION(x) == INT_ADD(x, 48));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Size__BDDI_PARAMS_CLOSEHANDLE(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {Size__BDDI_PARAMS_CLOSEHANDLE(x)} Size__BDDI_PARAMS_CLOSEHANDLE(x) == x + 0);
 axiom (forall x:int :: {Size__BDDI_PARAMS_CLOSEHANDLE(x)} Size__BDDI_PARAMS_CLOSEHANDLE(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Size__BDSI_INITIALIZERESOURCES(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {Size__BDSI_INITIALIZERESOURCES(x)} Size__BDSI_INITIALIZERESOURCES(x) == x + 0);
 axiom (forall x:int :: {Size__BDSI_INITIALIZERESOURCES(x)} Size__BDSI_INITIALIZERESOURCES(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Size__BDSI_SETPOWERSTATE(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {Size__BDSI_SETPOWERSTATE(x)} Size__BDSI_SETPOWERSTATE(x) == x + 0);
 axiom (forall x:int :: {Size__BDSI_SETPOWERSTATE(x)} Size__BDSI_SETPOWERSTATE(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function SpinLock__BDL_INTERNAL_DEVICE_EXTENSION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {SpinLock__BDL_INTERNAL_DEVICE_EXTENSION(x)} SpinLock__BDL_INTERNAL_DEVICE_EXTENSION(x) == x + 24);
 axiom (forall x:int :: {SpinLock__BDL_INTERNAL_DEVICE_EXTENSION(x)} SpinLock__BDL_INTERNAL_DEVICE_EXTENSION(x) == INT_ADD(x, 24));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function StackCount__IRP(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {StackCount__IRP(x)} StackCount__IRP(x) == x + 34);
 axiom (forall x:int :: {StackCount__IRP(x)} StackCount__IRP(x) == INT_ADD(x, 34));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function StartDevice___unnamed_16_357c4db4(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {StartDevice___unnamed_16_357c4db4(x)} StartDevice___unnamed_16_357c4db4(x) == x + 0);
 axiom (forall x:int :: {StartDevice___unnamed_16_357c4db4(x)} StartDevice___unnamed_16_357c4db4(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function State___unnamed_16_72a8bca0(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {State___unnamed_16_72a8bca0(x)} State___unnamed_16_72a8bca0(x) == x + 8);
 axiom (forall x:int :: {State___unnamed_16_72a8bca0(x)} State___unnamed_16_72a8bca0(x) == INT_ADD(x, 8));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Status___unnamed_4_46d45f1c(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {Status___unnamed_4_46d45f1c(x)} Status___unnamed_4_46d45f1c(x) == x + 0);
 axiom (forall x:int :: {Status___unnamed_4_46d45f1c(x)} Status___unnamed_4_46d45f1c(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function SymbolicLinkName__BDL_INTERNAL_DEVICE_EXTENSION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {SymbolicLinkName__BDL_INTERNAL_DEVICE_EXTENSION(x)} SymbolicLinkName__BDL_INTERNAL_DEVICE_EXTENSION(x) == x + 16);
 axiom (forall x:int :: {SymbolicLinkName__BDL_INTERNAL_DEVICE_EXTENSION(x)} SymbolicLinkName__BDL_INTERNAL_DEVICE_EXTENSION(x) == INT_ADD(x, 16));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function SystemState__POWER_STATE(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {SystemState__POWER_STATE(x)} SystemState__POWER_STATE(x) == x + 0);
 axiom (forall x:int :: {SystemState__POWER_STATE(x)} SystemState__POWER_STATE(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Tail__IRP(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {Tail__IRP(x)} Tail__IRP(x) == x + 64);
 axiom (forall x:int :: {Tail__IRP(x)} Tail__IRP(x) == INT_ADD(x, 64));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function Type__BDDI_ITEM(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {Type__BDDI_ITEM(x)} Type__BDDI_ITEM(x) == x + 0);
 axiom (forall x:int :: {Type__BDDI_ITEM(x)} Type__BDDI_ITEM(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function __unnamed_12_3a099e68___unnamed_40_3fd77f3c(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {__unnamed_12_3a099e68___unnamed_40_3fd77f3c(x)} __unnamed_12_3a099e68___unnamed_40_3fd77f3c(x) == x + 24);
 axiom (forall x:int :: {__unnamed_12_3a099e68___unnamed_40_3fd77f3c(x)} __unnamed_12_3a099e68___unnamed_40_3fd77f3c(x) == INT_ADD(x, 24));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function __unnamed_4_46d45f1c__IO_STATUS_BLOCK(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {__unnamed_4_46d45f1c__IO_STATUS_BLOCK(x)} __unnamed_4_46d45f1c__IO_STATUS_BLOCK(x) == x + 0);
 axiom (forall x:int :: {__unnamed_4_46d45f1c__IO_STATUS_BLOCK(x)} __unnamed_4_46d45f1c__IO_STATUS_BLOCK(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function bddiFunctions__BDL_DRIVER_EXTENSION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {bddiFunctions__BDL_DRIVER_EXTENSION(x)} bddiFunctions__BDL_DRIVER_EXTENSION(x) == x + 0);
 axiom (forall x:int :: {bddiFunctions__BDL_DRIVER_EXTENSION(x)} bddiFunctions__BDL_DRIVER_EXTENSION(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function bdsiFunctions__BDL_DRIVER_EXTENSION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {bdsiFunctions__BDL_DRIVER_EXTENSION(x)} bdsiFunctions__BDL_DRIVER_EXTENSION(x) == x + 32);
 axiom (forall x:int :: {bdsiFunctions__BDL_DRIVER_EXTENSION(x)} bdsiFunctions__BDL_DRIVER_EXTENSION(x) == INT_ADD(x, 32));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function fDeviceRemoved__BDL_INTERNAL_DEVICE_EXTENSION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {fDeviceRemoved__BDL_INTERNAL_DEVICE_EXTENSION(x)} fDeviceRemoved__BDL_INTERNAL_DEVICE_EXTENSION(x) == x + 813);
 axiom (forall x:int :: {fDeviceRemoved__BDL_INTERNAL_DEVICE_EXTENSION(x)} fDeviceRemoved__BDL_INTERNAL_DEVICE_EXTENSION(x) == INT_ADD(x, 813));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function fRegister__BDDI_PARAMS_REGISTERNOTIFY(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {fRegister__BDDI_PARAMS_REGISTERNOTIFY(x)} fRegister__BDDI_PARAMS_REGISTERNOTIFY(x) == x + 4);
 axiom (forall x:int :: {fRegister__BDDI_PARAMS_REGISTERNOTIFY(x)} fRegister__BDDI_PARAMS_REGISTERNOTIFY(x) == INT_ADD(x, 4));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function fStartSucceeded__BDL_INTERNAL_DEVICE_EXTENSION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {fStartSucceeded__BDL_INTERNAL_DEVICE_EXTENSION(x)} fStartSucceeded__BDL_INTERNAL_DEVICE_EXTENSION(x) == x + 812);
 axiom (forall x:int :: {fStartSucceeded__BDL_INTERNAL_DEVICE_EXTENSION(x)} fStartSucceeded__BDL_INTERNAL_DEVICE_EXTENSION(x) == INT_ADD(x, 812));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function fUsed__BDL_ISR_CONTROL_CHANGE_ITEM(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {fUsed__BDL_ISR_CONTROL_CHANGE_ITEM(x)} fUsed__BDL_ISR_CONTROL_CHANGE_ITEM(x) == x + 24);
 axiom (forall x:int :: {fUsed__BDL_ISR_CONTROL_CHANGE_ITEM(x)} fUsed__BDL_ISR_CONTROL_CHANGE_ITEM(x) == INT_ADD(x, 24));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function hData__BDDI_PARAMS_CLOSEHANDLE(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {hData__BDDI_PARAMS_CLOSEHANDLE(x)} hData__BDDI_PARAMS_CLOSEHANDLE(x) == x + 4);
 axiom (forall x:int :: {hData__BDDI_PARAMS_CLOSEHANDLE(x)} hData__BDDI_PARAMS_CLOSEHANDLE(x) == INT_ADD(x, 4));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function handle_LIST_NODE_(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {handle_LIST_NODE_(x)} handle_LIST_NODE_(x) == x + 4);
 axiom (forall x:int :: {handle_LIST_NODE_(x)} handle_LIST_NODE_(x) == INT_ADD(x, 4));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function pAllocatedResourcesTranslated__BDSI_INITIALIZERESOURCES(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {pAllocatedResourcesTranslated__BDSI_INITIALIZERESOURCES(x)} pAllocatedResourcesTranslated__BDSI_INITIALIZERESOURCES(x) == x + 8);
 axiom (forall x:int :: {pAllocatedResourcesTranslated__BDSI_INITIALIZERESOURCES(x)} pAllocatedResourcesTranslated__BDSI_INITIALIZERESOURCES(x) == INT_ADD(x, 8));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function pAllocatedResources__BDSI_INITIALIZERESOURCES(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {pAllocatedResources__BDSI_INITIALIZERESOURCES(x)} pAllocatedResources__BDSI_INITIALIZERESOURCES(x) == x + 4);
 axiom (forall x:int :: {pAllocatedResources__BDSI_INITIALIZERESOURCES(x)} pAllocatedResources__BDSI_INITIALIZERESOURCES(x) == INT_ADD(x, 4));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function pAttachedDeviceObject__BDL_DEVICEEXT(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {pAttachedDeviceObject__BDL_DEVICEEXT(x)} pAttachedDeviceObject__BDL_DEVICEEXT(x) == x + 4);
 axiom (forall x:int :: {pAttachedDeviceObject__BDL_DEVICEEXT(x)} pAttachedDeviceObject__BDL_DEVICEEXT(x) == INT_ADD(x, 4));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function pBDLExtension__POWER_IRP_CONTEXT(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {pBDLExtension__POWER_IRP_CONTEXT(x)} pBDLExtension__POWER_IRP_CONTEXT(x) == x + 0);
 axiom (forall x:int :: {pBDLExtension__POWER_IRP_CONTEXT(x)} pBDLExtension__POWER_IRP_CONTEXT(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function pBuffer__BDDI_ITEM_DATA_BLOCK(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {pBuffer__BDDI_ITEM_DATA_BLOCK(x)} pBuffer__BDDI_ITEM_DATA_BLOCK(x) == x + 4);
 axiom (forall x:int :: {pBuffer__BDDI_ITEM_DATA_BLOCK(x)} pBuffer__BDDI_ITEM_DATA_BLOCK(x) == INT_ADD(x, 4));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function pDriverExtension__BDL_INTERNAL_DEVICE_EXTENSION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {pDriverExtension__BDL_INTERNAL_DEVICE_EXTENSION(x)} pDriverExtension__BDL_INTERNAL_DEVICE_EXTENSION(x) == x + 12);
 axiom (forall x:int :: {pDriverExtension__BDL_INTERNAL_DEVICE_EXTENSION(x)} pDriverExtension__BDL_INTERNAL_DEVICE_EXTENSION(x) == INT_ADD(x, 12));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function pHead_HANDLELIST_(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {pHead_HANDLELIST_(x)} pHead_HANDLELIST_(x) == x + 0);
 axiom (forall x:int :: {pHead_HANDLELIST_(x)} pHead_HANDLELIST_(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function pIrp__BDL_CONTROL_CHANGE_STRUCT(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {pIrp__BDL_CONTROL_CHANGE_STRUCT(x)} pIrp__BDL_CONTROL_CHANGE_STRUCT(x) == x + 632);
 axiom (forall x:int :: {pIrp__BDL_CONTROL_CHANGE_STRUCT(x)} pIrp__BDL_CONTROL_CHANGE_STRUCT(x) == INT_ADD(x, 632));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function pNext_LIST_NODE_(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {pNext_LIST_NODE_(x)} pNext_LIST_NODE_(x) == x + 0);
 axiom (forall x:int :: {pNext_LIST_NODE_(x)} pNext_LIST_NODE_(x) == INT_ADD(x, 0));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function pTail_HANDLELIST_(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {pTail_HANDLELIST_(x)} pTail_HANDLELIST_(x) == x + 4);
 axiom (forall x:int :: {pTail_HANDLELIST_(x)} pTail_HANDLELIST_(x) == INT_ADD(x, 4));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function pfbddiCloseHandle__BDLI_BDDIFUNCTIONS(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {pfbddiCloseHandle__BDLI_BDDIFUNCTIONS(x)} pfbddiCloseHandle__BDLI_BDDIFUNCTIONS(x) == x + 24);
 axiom (forall x:int :: {pfbddiCloseHandle__BDLI_BDDIFUNCTIONS(x)} pfbddiCloseHandle__BDLI_BDDIFUNCTIONS(x) == INT_ADD(x, 24));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function pfbddiRegisterNotify__BDLI_BDDIFUNCTIONS(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {pfbddiRegisterNotify__BDLI_BDDIFUNCTIONS(x)} pfbddiRegisterNotify__BDLI_BDDIFUNCTIONS(x) == x + 4);
 axiom (forall x:int :: {pfbddiRegisterNotify__BDLI_BDDIFUNCTIONS(x)} pfbddiRegisterNotify__BDLI_BDDIFUNCTIONS(x) == INT_ADD(x, 4));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function pfbdsiInitializeResources__BDLI_BDSIFUNCTIONS(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {pfbdsiInitializeResources__BDLI_BDSIFUNCTIONS(x)} pfbdsiInitializeResources__BDLI_BDSIFUNCTIONS(x) == x + 12);
 axiom (forall x:int :: {pfbdsiInitializeResources__BDLI_BDSIFUNCTIONS(x)} pfbdsiInitializeResources__BDLI_BDSIFUNCTIONS(x) == INT_ADD(x, 12));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function pfbdsiReleaseResources__BDLI_BDSIFUNCTIONS(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {pfbdsiReleaseResources__BDLI_BDSIFUNCTIONS(x)} pfbdsiReleaseResources__BDLI_BDSIFUNCTIONS(x) == x + 16);
 axiom (forall x:int :: {pfbdsiReleaseResources__BDLI_BDSIFUNCTIONS(x)} pfbdsiReleaseResources__BDLI_BDSIFUNCTIONS(x) == INT_ADD(x, 16));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function pfbdsiRemoveDevice__BDLI_BDSIFUNCTIONS(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {pfbdsiRemoveDevice__BDLI_BDSIFUNCTIONS(x)} pfbdsiRemoveDevice__BDLI_BDSIFUNCTIONS(x) == x + 8);
 axiom (forall x:int :: {pfbdsiRemoveDevice__BDLI_BDSIFUNCTIONS(x)} pfbdsiRemoveDevice__BDLI_BDSIFUNCTIONS(x) == INT_ADD(x, 8));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function pfbdsiSetPowerState__BDLI_BDSIFUNCTIONS(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {pfbdsiSetPowerState__BDLI_BDSIFUNCTIONS(x)} pfbdsiSetPowerState__BDLI_BDSIFUNCTIONS(x) == x + 32);
 axiom (forall x:int :: {pfbdsiSetPowerState__BDLI_BDSIFUNCTIONS(x)} pfbdsiSetPowerState__BDLI_BDSIFUNCTIONS(x) == INT_ADD(x, 32));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function rgChannels__BDL_COMPONENT(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {rgChannels__BDL_COMPONENT(x)} rgChannels__BDL_COMPONENT(x) == x + 16);
 axiom (forall x:int :: {rgChannels__BDL_COMPONENT(x)} rgChannels__BDL_COMPONENT(x) == INT_ADD(x, 16));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function rgComponents__BDL_DEVICE_CAPABILITIES(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {rgComponents__BDL_DEVICE_CAPABILITIES(x)} rgComponents__BDL_DEVICE_CAPABILITIES(x) == x + 12);
 axiom (forall x:int :: {rgComponents__BDL_DEVICE_CAPABILITIES(x)} rgComponents__BDL_DEVICE_CAPABILITIES(x) == INT_ADD(x, 12));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function rgControls__BDL_CHANNEL(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {rgControls__BDL_CHANNEL(x)} rgControls__BDL_CHANNEL(x) == x + 8);
 axiom (forall x:int :: {rgControls__BDL_CHANNEL(x)} rgControls__BDL_CHANNEL(x) == INT_ADD(x, 8));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function rgControls__BDL_COMPONENT(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {rgControls__BDL_COMPONENT(x)} rgControls__BDL_COMPONENT(x) == x + 8);
 axiom (forall x:int :: {rgControls__BDL_COMPONENT(x)} rgControls__BDL_COMPONENT(x) == INT_ADD(x, 8));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function rgControls__BDL_DEVICE_CAPABILITIES(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {rgControls__BDL_DEVICE_CAPABILITIES(x)} rgControls__BDL_DEVICE_CAPABILITIES(x) == x + 4);
 axiom (forall x:int :: {rgControls__BDL_DEVICE_CAPABILITIES(x)} rgControls__BDL_DEVICE_CAPABILITIES(x) == INT_ADD(x, 4));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function rgProducts__BDL_CHANNEL(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {rgProducts__BDL_CHANNEL(x)} rgProducts__BDL_CHANNEL(x) == x + 28);
 axiom (forall x:int :: {rgProducts__BDL_CHANNEL(x)} rgProducts__BDL_CHANNEL(x) == INT_ADD(x, 28));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function rgSourceLists__BDL_CHANNEL(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {rgSourceLists__BDL_CHANNEL(x)} rgSourceLists__BDL_CHANNEL(x) == x + 20);
 axiom (forall x:int :: {rgSourceLists__BDL_CHANNEL(x)} rgSourceLists__BDL_CHANNEL(x) == INT_ADD(x, 20));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function wszSerialNumber__BDL_INTERNAL_DEVICE_EXTENSION(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {wszSerialNumber__BDL_INTERNAL_DEVICE_EXTENSION(x)} wszSerialNumber__BDL_INTERNAL_DEVICE_EXTENSION(x) == x + 832);
 axiom (forall x:int :: {wszSerialNumber__BDL_INTERNAL_DEVICE_EXTENSION(x)} wszSerialNumber__BDL_INTERNAL_DEVICE_EXTENSION(x) == INT_ADD(x, 832));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
 
 function wszSerialNumber__BDSI_INITIALIZERESOURCES(int) returns (int);
-        
-        
+
+
 //axiom (forall x:int :: {wszSerialNumber__BDSI_INITIALIZERESOURCES(x)} wszSerialNumber__BDSI_INITIALIZERESOURCES(x) == x + 12);
 axiom (forall x:int :: {wszSerialNumber__BDSI_INITIALIZERESOURCES(x)} wszSerialNumber__BDSI_INITIALIZERESOURCES(x) == INT_ADD(x, 12));
 //adding this additional axiom since to show Array(x, 1, n)[f(x)], we need f(x) to be a PLUS
@@ -877,8 +880,8 @@ function {:bvbuiltin "bvsge"}  BV32_GEQ(x:bv32, y:bv32)  returns  (bool);
 /////////////////////////////////
 
 //Is this sound for bv32?
-function MINUS_BOTH_PTR_OR_BOTH_INT(a:int, b:int, size:int) returns (int); 
- axiom  (forall a:int, b:int, size:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(a,b,size)} 
+function MINUS_BOTH_PTR_OR_BOTH_INT(a:int, b:int, size:int) returns (int);
+ axiom  (forall a:int, b:int, size:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(a,b,size)}
 //size * MINUS_BOTH_PTR_OR_BOTH_INT(a,b,size) <= a - b && a - b < size * (MINUS_BOTH_PTR_OR_BOTH_INT(a,b,size) + 1));
  INT_LEQ( INT_MULT(size, MINUS_BOTH_PTR_OR_BOTH_INT(a,b,size)),  INT_SUB(a, b)) && INT_LT( INT_SUB(a, b),  INT_MULT(size, (INT_ADD(MINUS_BOTH_PTR_OR_BOTH_INT(a,b,size), 1)))));
 
@@ -894,16 +897,16 @@ axiom(forall a:int, a_size:int, b:int :: {MINUS_LEFT_PTR(a,a_size,b)} MINUS_LEFT
 function PLUS(a:int, a_size:int, b:int) returns (int);
 //axiom (forall a:int, a_size:int, b:int :: {PLUS(a,a_size,b)} PLUS(a,a_size,b) == a + a_size * b);
 axiom (forall a:int, a_size:int, b:int :: {PLUS(a,a_size,b)} PLUS(a,a_size,b) == INT_ADD(a, INT_MULT(a_size, b)));
- 
+
 function MULT(a:int, b:int) returns (int); // a*b
 //axiom(forall a:int, b:int :: {MULT(a,b)} MULT(a,b) == a * b);
 axiom(forall a:int, b:int :: {MULT(a,b)} MULT(a,b) == INT_MULT(a, b));
- 
-function DIV(a:int, b:int) returns (int); // a/b	
 
-// Not sure if these axioms hold for BV too, just commet them for BV 	      
-  
- 
+function DIV(a:int, b:int) returns (int); // a/b
+
+// Not sure if these axioms hold for BV too, just commet them for BV
+
+
 
 //uninterpreted binary op
 function BINARY_BOTH_INT(a:int, b:int) returns (int);
@@ -915,7 +918,7 @@ function BINARY_BOTH_INT(a:int, b:int) returns (int);
 
 
  function BIT_BAND(a:int, b:int) returns (x:int);
- 
+
 
  function BIT_BOR(a:int, b:int) returns (x:int);
  function BIT_BXOR(a:int, b:int) returns (x:int);
@@ -97964,6 +97967,3 @@ implementation storm_main()
     assume raiseException;
     return;
 }
-
-
-

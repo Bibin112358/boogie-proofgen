@@ -38,7 +38,6 @@ public class CfgOptimizationsManager
   {
     IDictionary<Block, Block> afterToBefore = beforeToAfter.ToDictionary(x => x.Value, x => x.Key);
     IDictionary<Block, IList<Block>> beforeOptBlockToLoops = new Dictionary<Block, IList<Block>>();
-    Block coalescedAfterBlock = new Block();
     ISet<Block> loopHeadsSet = new HashSet<Block>();
     IDictionary<Block, Block> selfLoopsNew = new Dictionary<Block, Block>();
     
@@ -61,7 +60,7 @@ public class CfgOptimizationsManager
         }
       }
       else if (CoalescedBlocksToTarget.ContainsKey(beforeBlock)) {
-        coalescedAfterBlock = CoalescedBlocksToTarget[beforeBlock];
+        Block coalescedAfterBlock = CoalescedBlocksToTarget[beforeBlock];
         List<Block> temp = new List<Block>();
         foreach (Block loopHeader in beforeDagBlockToLoops[coalescedAfterBlock])
         {
@@ -130,7 +129,7 @@ public class CfgOptimizationsManager
 
       if (loopHeadsSet.Contains(beforeBlock) && CoalescedBlocksToTarget.ContainsKey(beforeBlock)) //In this case we have a coalesced loop head
       {
-        coalescedAfterBlock = CoalescedBlocksToTarget[beforeBlock];
+        Block coalescedAfterBlock = CoalescedBlocksToTarget[beforeBlock];
         var globalBlock = lemmaManager.LoopHeadCoalesced(beforeBlock, coalescedAfterBlock,
           bigblock => GetGlobalBlockLemmaName(bigblock, lemmaNamer),
           bigblock => GetHybridBlockLemmaName(bigblock, lemmaNamer),
@@ -146,7 +145,7 @@ public class CfgOptimizationsManager
       {
         if (ProgramToVCProof.LemmaHelper.FinalStateIsMagic(beforeBlock)) //Pruning of Unreachable Blocks Coalesced
         {
-          coalescedAfterBlock = CoalescedBlocksToTarget[beforeBlock];
+          Block coalescedAfterBlock = CoalescedBlocksToTarget[beforeBlock];
           var pruningCoalesced = lemmaManager.HybridBlockLemmaPruning(beforeBlock, coalescedAfterBlock,
             bigblock => GetHybridBlockLemmaName(bigblock, lemmaNamer), beforeOptBlockToLoops[beforeBlock]);
           outerDecls.Add(pruningCoalesced);
@@ -167,7 +166,7 @@ public class CfgOptimizationsManager
         }
         else if (ListCoalescedBlocks[beforeBlock].coalescedBlocks.Count == ListCoalescedBlocks[beforeBlock].idx + 1) //tail of coalesced blocks
         {
-          coalescedAfterBlock = CoalescedBlocksToTarget[beforeBlock];
+          Block coalescedAfterBlock = CoalescedBlocksToTarget[beforeBlock];
           
           var tail = lemmaManager.HybridBlockLemmaTail(beforeBlock, coalescedAfterBlock,
             bigblock => GetGlobalBlockLemmaName(bigblock, lemmaNamer),
@@ -177,7 +176,7 @@ public class CfgOptimizationsManager
         }
         else //in Between Block
         {
-          coalescedAfterBlock = CoalescedBlocksToTarget[beforeBlock];
+          Block coalescedAfterBlock = CoalescedBlocksToTarget[beforeBlock];
           var inBetweenBlock = lemmaManager.HybridBlockLemma(beforeBlock, coalescedAfterBlock,
             beforeOptimizations.GetSuccessorBlocks(beforeBlock).FirstOrDefault(),
             bigblock => GetHybridBlockLemmaName(bigblock, lemmaNamer), beforeOptBlockToLoops[beforeBlock],

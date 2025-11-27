@@ -265,12 +265,6 @@ namespace ProofGeneration
             throw new NotImplementedException();
         }
 
-        public override YieldCmd VisitYieldCmd(YieldCmd node)
-        {
-            throw new NotImplementedException();
-        }
-
-
         //not implemented exprs
         public override Expr VisitBvConcatExpr(BvConcatExpr node)
         {

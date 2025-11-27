@@ -1,25 +1,25 @@
-// RUN: %parallel-boogie -monomorphize -normalizeNames:1 -enhancedErrorMessages:1 "%s" > "%t"
+// RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // Issue #361
 
-type {:datatype} Cell _;
-function {:constructor} Cell<T>(x: T): Cell T;
+datatype Foo<T> { Foo(x: T) }
 
-type {:datatype} OtherCell _;
-function {:constructor} OtherCell<T>(x: T): OtherCell T;
 
-function foo<T>(): Cell T;
+datatype OtherFoo<T> { OtherFoo(x: T) }
+
+
+function foo<T>(): Foo T;
 
 procedure p() {
-  var x: Cell (OtherCell int);
-  x := Cell(OtherCell(1));
+  var x: Foo (OtherFoo int);
+  x := Foo(OtherFoo(1));
   assume {:print "x=", x} true;
-  assert x#OtherCell(x#Cell(x)) == 1;
+  assert x->x->x == 1;
 }
 
 procedure q() {
-  var x: Cell (OtherCell int);
-  x := Cell(OtherCell(1));
+  var x: Foo (OtherFoo int);
+  x := Foo(OtherFoo(1));
   assume {:print "x=", x} true;
-  assert x#OtherCell(x#Cell(x)) == 0;
+  assert x->x->x == 0;
 }

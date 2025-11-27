@@ -82,9 +82,9 @@ namespace ProofGeneration.AstToCfg
               int succBigBlockIndex = -1;
               Block successorBlock;
               int succBlockIndex = -1;
-              if (proofGenInfo.GetMappingCopyBigblockToOrigBigblock()[beforeBlock].successorBigBlock != null)
+              if (proofGenInfo.GetMappingCopyBigblockToOrigBigblock()[beforeBlock].SuccessorBigBlock != null)
               {
-                successorBigBlockOrig = proofGenInfo.GetMappingCopyBigblockToOrigBigblock()[beforeBlock].successorBigBlock;
+                successorBigBlockOrig = proofGenInfo.GetMappingCopyBigblockToOrigBigblock()[beforeBlock].SuccessorBigBlock;
                 successorBigBlockCopy = proofGenInfo.GetMappingOrigBigblockToCopyBigblock()[successorBigBlockOrig];
                 succBigBlockIndex = proofGenInfo.GetMappingCopyBigBlockToIndex()[successorBigBlockCopy];
                 successorBlock = beforeToAfter[successorBigBlockCopy];

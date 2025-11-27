@@ -111,7 +111,7 @@ namespace ProofGeneration.CfgToDag
 
             for (int i = 0, n = node.Args.Count; i < n; i++)
             {
-              string? childHint = Translate(cce.NonNull(node.Args[i]));
+              string? childHint = Translate(Cce.NonNull(node.Args[i]));
               if (childHint == null)
               {
                 childrenHints.Add("NoPolyHint");

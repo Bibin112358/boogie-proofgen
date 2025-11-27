@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie.VCExprAST;
 
@@ -15,6 +14,10 @@ public class RandomiseNamer : ScopedNamer
   public RandomiseNamer(ScopedNamer namer, Random random) : base(namer)
   {
     this.random = random;
+  }
+
+  public static RandomiseNamer Create(Random random, ScopedNamer namer = null) {
+    return namer != null ? new RandomiseNamer(namer, random) : new RandomiseNamer(random);
   }
   
   private RandomiseNamer(RandomiseNamer namer) : base(namer)

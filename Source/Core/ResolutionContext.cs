@@ -8,7 +8,7 @@ namespace Microsoft.Boogie
   [ContractClass(typeof(IErrorSinkContracts))]
   public interface IErrorSink
   {
-    void Error(IToken /*!*/ tok, string /*!*/ msg);
+    void Error(IToken tok, string msg);
   }
 
   [ContractClassFor(typeof(IErrorSink))]
@@ -118,9 +118,12 @@ namespace Microsoft.Boogie
 
   public class ResolutionContext : CheckingContext
   {
-    public ResolutionContext(IErrorSink errorSink)
+    public CoreOptions Options { get; }
+
+    public ResolutionContext(IErrorSink errorSink, CoreOptions options)
       : base(errorSink)
     {
+      this.Options = options;
     }
     
     // user-defined types, which can be either TypeCtorDecl or TypeSynonymDecl
@@ -130,7 +133,7 @@ namespace Microsoft.Boogie
     void ObjectInvariant()
     {
       Contract.Invariant(types != null);
-      Contract.Invariant(cce.NonNullElements(typeBinders));
+      Contract.Invariant(Cce.NonNullElements(typeBinders));
       Contract.Invariant(varContext != null);
       Contract.Invariant(functions != null);
       Contract.Invariant(procedures != null);
@@ -215,8 +218,8 @@ namespace Microsoft.Boogie
       return type as TypeSynonymDecl;
     }
 
-    List<TypeVariable /*!*/> /*!*/
-      typeBinders = new List<TypeVariable /*!*/>(5);
+    List<TypeVariable>
+      typeBinders = new List<TypeVariable>(5);
 
     public void AddTypeBinder(TypeVariable td)
     {
@@ -335,7 +338,7 @@ namespace Microsoft.Boogie
     }
 
     // symbolic constants, global variables, local variables, formals, expression-bound variables
-    VarContextNode /*!*/
+    VarContextNode
       varContext = new VarContextNode(null, false);
 
     /// <summary>
@@ -379,7 +382,7 @@ namespace Microsoft.Boogie
     public void AddVariable(Variable var)
     {
       Contract.Requires(var != null);
-      var previous = FindVariable(cce.NonNull(var.Name), true);
+      var previous = FindVariable(Cce.NonNull(var.Name), true);
       if (previous == null)
       {
         varContext.VarSymbols.Add(var.Name, var);
@@ -557,12 +560,12 @@ namespace Microsoft.Boogie
                        Contract.Result<T>() == b);
 
       T ignore, keep;
-      if (QKeyValue.FindBoolAttribute(a.Attributes, "extern"))
+      if (a.Attributes.FindBoolAttribute("extern"))
       {
         ignore = a;
         keep = b;
       }
-      else if (QKeyValue.FindBoolAttribute(b.Attributes, "extern"))
+      else if (b.Attributes.FindBoolAttribute("extern"))
       {
         ignore = b;
         keep = a;
@@ -573,7 +576,7 @@ namespace Microsoft.Boogie
       }
 
       // prepend :ignore attribute
-      ignore.Attributes = new QKeyValue(ignore.tok, "ignore", new List<object /*!*/>(), ignore.Attributes);
+      ignore.Attributes = new QKeyValue(ignore.tok, "ignore", new List<object>(), ignore.Attributes);
       return keep;
     }
 
@@ -708,11 +711,11 @@ namespace Microsoft.Boogie
       {
         Contract.Assert(value != stateMode);
         Contract.Assert(stateMode == State.Single || value == State.Single);
-        cce.BeginExpose(this);
+        Cce.BeginExpose(this);
         {
           stateMode = value;
         }
-        cce.EndExpose();
+        Cce.EndExpose();
       }
     }
 
@@ -729,30 +732,40 @@ namespace Microsoft.Boogie
       set
       {
         Contract.Assert(triggerMode != value);
-        cce.BeginExpose(this);
+        Cce.BeginExpose(this);
         {
           triggerMode = value;
         }
-        cce.EndExpose();
+        Cce.EndExpose();
       }
     }
+
+    public Procedure Proc;
   }
 
   public class TypecheckingContext : CheckingContext
   {
-    public List<IdentifierExpr> Frame; // used in checking the assignment targets of implementation bodies
-    public bool Yields;
+    public CoreOptions Options { get; }
+    public Procedure Proc;
+    public Implementation Impl;
+    public LayerRange ExpectedLayerRange;
+    public bool GlobalAccessOnlyInOld;
+    public int InsideOld;
+    public bool CheckModifies => Proc != null && (!Options?.InferModifies ?? true);
 
-    public TypecheckingContext(IErrorSink errorSink)
+    public TypecheckingContext(IErrorSink errorSink, CoreOptions options)
       : base(errorSink)
     {
+      this.Options = options;
     }
 
     public bool InFrame(Variable v)
     {
-      Contract.Requires(v != null);
-      Contract.Requires(Frame != null);
-      return Frame.Any(f => f.Decl == v);
+      return Proc.Modifies.Any(f => f.Decl == v);
     }
+
+    public bool Yields => Proc is YieldProcedureDecl;
+
+    public bool GlobalAccessOk => !GlobalAccessOnlyInOld || 0 < InsideOld;
   }
 }

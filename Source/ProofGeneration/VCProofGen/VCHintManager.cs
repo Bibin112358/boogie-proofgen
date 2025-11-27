@@ -22,7 +22,7 @@ namespace ProofGeneration.VCProofGen
             VCExpr exprVC,
             VCExpr postVC,
             VCExpr resultVC,
-            CommandLineOptions.SubsumptionOption subsumption)
+            ProofGenerationOptions.SubsumptionOption subsumption)
         {
             VCHint vcHint;
             List<LemmaDecl> requiredDecls;
@@ -150,7 +150,7 @@ namespace ProofGeneration.VCProofGen
             AssertCmd cmd,
             VCExpr exprVC,
             VCExpr postVC,
-            CommandLineOptions.SubsumptionOption subsumption,
+            ProofGenerationOptions.SubsumptionOption subsumption,
             out List<LemmaDecl> requiredDecls)
         {
             requiredDecls = null;
@@ -169,8 +169,8 @@ namespace ProofGeneration.VCProofGen
 
             _vcRewriteLemmaGen.RequiredVcRewrite(cmd.Expr, false, out requiredDecls);
             if (
-                subsumption == CommandLineOptions.SubsumptionOption.Always ||
-                subsumption == CommandLineOptions.SubsumptionOption.NotForQuantifiers && !(exprVC is VCExprQuantifier)
+                subsumption == ProofGenerationOptions.SubsumptionOption.Always ||
+                subsumption == ProofGenerationOptions.SubsumptionOption.NotForQuantifiers && !(exprVC is VCExprQuantifier)
             )
                 return new AssertSimpleHint(AssertSimpleHint.AssertSimpleType.SUBSUMPTION,
                     new VCExprHint(requiredDecls));
