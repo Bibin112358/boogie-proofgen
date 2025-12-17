@@ -40,8 +40,12 @@ namespace ProofGeneration.Util
                 node.Proc.Ensures.Any(ens => ens.Free) ||
                 node.Proc.InParams.Union(node.Proc.OutParams).Union(node.LocVars).Any(v => v.TypedIdent.WhereExpr != null))
             {
+
+                if (node.Proc.TypeParameters.Any()) Console.WriteLine("| procedure type parameters |");
+                if (node.Proc.Requires.Any(req => req.Free) || node.Proc.Ensures.Any(ens => ens.Free)) Console.WriteLine("| free requires |");
+                if (node.Proc.InParams.Union(node.Proc.OutParams).Union(node.LocVars).Any(v => v.TypedIdent.WhereExpr != null)) Console.WriteLine("| where clauses |");
                 problematicNode = node;
-                return node;
+                //return node;
             }
 
             return base.VisitImplementation(node);
@@ -53,7 +57,8 @@ namespace ProofGeneration.Util
             if (node.isFloat || node.IsBv || node.IsString || node.IsRMode || node.IsRegEx)
             {
                 problematicNode = node;
-                return node;
+                Console.WriteLine("| Basic Type | VisitBasicType |");
+                //return node;
             }
 
             return base.VisitBasicType(node);
@@ -62,6 +67,7 @@ namespace ProofGeneration.Util
         public override Type VisitFloatType(FloatType node)
         {
             problematicNode = node;
+            Console.WriteLine("| Float | VisitFloatType |");
             return node;
         }
 
@@ -70,24 +76,28 @@ namespace ProofGeneration.Util
         public override Sequential VisitSequential(Sequential node)
         {
             problematicNode = node;
+            Console.WriteLine("| Regex |");
             return node;
         }
 
         public override Choice VisitChoice(Choice node)
         {
             problematicNode = node;
+            Console.WriteLine("| Regex |");
             return node;
         }
         
         public override Cmd VisitRE(RE node)
         {
             problematicNode = node;
+            Console.WriteLine("| Regex |");
             return node;
         }
         
         public override AtomicRE VisitAtomicRE(AtomicRE node)
         {
             problematicNode = node;
+            Console.WriteLine("| Regex |");
             return node;
         }
         #endregion
@@ -97,6 +107,7 @@ namespace ProofGeneration.Util
         public override Expr VisitCodeExpr(CodeExpr node)
         {
             problematicNode = node;
+            Console.WriteLine("| Code block expressions |");
             return node;
         }
 
@@ -106,24 +117,28 @@ namespace ProofGeneration.Util
         public override Expr VisitLambdaExpr(LambdaExpr node)
         {
             problematicNode = node;
+            Console.WriteLine("| Maps | VisitLambdaExpr | ");
             return node;
         }
 
         public override MapType VisitMapType(MapType node)
         {
             problematicNode = node;
+            Console.WriteLine("| Maps | VisitMapType | ");
             return node;
         }
 
         public override AssignLhs VisitMapAssignLhs(MapAssignLhs node)
         {
             problematicNode = node;
+            Console.WriteLine("| Maps | VisitMapAssignLhs |");
             return node;
         }
 
         public override Type VisitMapTypeProxy(MapTypeProxy node)
         {
             problematicNode = node;
+            Console.WriteLine("| Maps | VisitMapTypeProxy |");
             return node;
         }
         #endregion
@@ -134,24 +149,28 @@ namespace ProofGeneration.Util
         public override Type VisitBvType(BvType node)
         {
             problematicNode = node;
+            Console.WriteLine("| Bitvectors | VisitBvType |");
             return node;
         }
         
         public override Expr VisitBvConcatExpr(BvConcatExpr node)
         {
             problematicNode = node;
+            Console.WriteLine("| Bitvectors | VisitBvConcatExpr |");
             return node;
         }
 
         public override Expr VisitBvExtractExpr(BvExtractExpr node)
         {
             problematicNode = node;
+            Console.WriteLine("| Bitvectors | VisitBvExtractExpr |");
             return node;
         }
 
         public override Type VisitBvTypeProxy(BvTypeProxy node)
         {
             problematicNode = node;
+            Console.WriteLine("| Bitvectors | VisitBvTypeProxy |");
             return node;
         }
         #endregion
@@ -163,6 +182,7 @@ namespace ProofGeneration.Util
         public override Cmd VisitParCallCmd(ParCallCmd node)
         {
             problematicNode = node;
+            Console.WriteLine("| CIVL |");
             return node;
         }
         #endregion
