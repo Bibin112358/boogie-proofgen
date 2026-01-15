@@ -117,32 +117,32 @@ namespace ProofGeneration.Util
         public override Expr VisitLambdaExpr(LambdaExpr node)
         {
             problematicNode = node;
-            Console.WriteLine("| Maps | VisitLambdaExpr | ");
+            Console.WriteLine("| Maps | VisitLambdaExpr | " + node);
             return node;
         }
 
         public override MapType VisitMapType(MapType node)
         {
             problematicNode = node;
-            Console.WriteLine("| Maps | VisitMapType | ");
+            Console.WriteLine("| Maps | VisitMapType | " + node);
             return node;
         }
 
         public override AssignLhs VisitMapAssignLhs(MapAssignLhs node)
         {
             problematicNode = node;
-            Console.WriteLine("| Maps | VisitMapAssignLhs |");
+            Console.WriteLine("| Maps | VisitMapAssignLhs | " + node.AsExpr);
             return node;
         }
 
         public override Type VisitMapTypeProxy(MapTypeProxy node)
         {
             problematicNode = node;
-            Console.WriteLine("| Maps | VisitMapTypeProxy |");
+            Console.WriteLine("| Maps | VisitMapTypeProxy | " + node);
             return node;
         }
         #endregion
-        
+
         #region bitvectors
         
         //do not support bitvectors
