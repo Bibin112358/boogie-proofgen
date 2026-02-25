@@ -231,12 +231,14 @@ namespace ProofGeneration.VCProofGen
 
         public Term VisitSelectOp(VCExprNAry node, List<Term> arg)
         {
-            throw new NotImplementedException();
+            var TODO = IsaCommonTerms.TermIdentFromName("TODO_smt_vs_select_op");
+            return new TermApp(TODO, arg);
         }
 
         public Term VisitStoreOp(VCExprNAry node, List<Term> arg)
         {
-            throw new NotImplementedException();
+            var TODO = IsaCommonTerms.TermIdentFromName("TODO_smt_vs_store_op");
+            return new TermApp(TODO, arg);
         }
 
         public Term VisitSubOp(VCExprNAry node, List<Term> arg)

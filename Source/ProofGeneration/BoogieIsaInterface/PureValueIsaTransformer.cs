@@ -76,5 +76,11 @@ namespace ProofGeneration.BoogieIsaInterface
             ReturnResult(arg);
             return node;
         }
+
+        public override MapType VisitMapType(MapType node)
+        {
+            ReturnResult(arg);
+            return node;
+        }
     }
 }

@@ -83,7 +83,9 @@ namespace ProofGeneration
 
         public override MapType VisitMapType(MapType node)
         {
-            throw new NotImplementedException();
+            var argTypes = node.Arguments.Select(Translate).ToList();
+            ReturnResult(IsaBoogieType.TMapType(argTypes, Translate(node.Result), usedClosedConstructors));
+            return node;
         }
 
         public override Type VisitBvType(BvType node)

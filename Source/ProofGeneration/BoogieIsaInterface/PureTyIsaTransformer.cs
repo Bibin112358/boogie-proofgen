@@ -122,7 +122,23 @@ namespace ProofGeneration.BoogieIsaInterface
 
         public override MapType VisitMapType(MapType node)
         {
-            throw new NotImplementedException();
+            // TODO: correctly implemented?
+            /*
+            // TODO: correctly adjusted?
+            IList<TypeIsa> types = node.Arguments.Select(Translate).ToList();
+            types.Add(Translate(node.Result));
+
+            // TODO: blindly copied from VisitFunction
+            var nonPolyType = types.Reverse().Aggregate((res, arg) => new ArrowType(arg, res));
+
+            //need to add arguments for type parameters
+            //TODO: for type guard approach only need t o add parameters for those parameters that cannot be extracted
+            var polyType = node.TypeParameters.Aggregate(nonPolyType, (res, arg) => new ArrowType(typeTy, res));
+            ReturnResult(polyType);
+            */
+            ReturnResult(valueTy);
+
+            return node;
         }
 
         public override Type VisitBvType(BvType node)

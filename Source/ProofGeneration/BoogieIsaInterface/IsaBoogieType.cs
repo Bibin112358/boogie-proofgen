@@ -14,6 +14,7 @@ namespace ProofGeneration
         private static readonly TermIdent tvarId = IsaCommonTerms.TermIdentFromName("TVar");
         private static readonly TermIdent tconId = IsaCommonTerms.TermIdentFromName("TCon");
         private static readonly TermIdent tconClosedId = IsaCommonTerms.TermIdentFromName("TConC");
+        private static readonly TermIdent tmapId = IsaCommonTerms.TermIdentFromName("TMap");
 
         public static TypeIsa VariableDeclsType => IsaCommonTypes.GetDataTypeNoArg("vdecls");
 
@@ -53,6 +54,16 @@ namespace ProofGeneration
         {
             var id = useClosedConstructor ? tconClosedId : tconId;
             return new TermApp(new TermApp(id, new StringConst(constructorName)), new TermList(constructorArgs));
+        }
+
+        public static Term TMapType(List<Term> keyTypes, Term valueType, bool useClosedConstructor = false)
+        {
+            if (useClosedConstructor)
+            {
+                throw new System.NotImplementedException();
+            }
+
+            return new TermApp(tmapId, new TermList(keyTypes), valueType);
         }
 
         public static TypeIsa ValType(TypeIsa absValType)

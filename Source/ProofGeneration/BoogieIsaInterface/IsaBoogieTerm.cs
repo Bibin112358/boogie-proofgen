@@ -202,6 +202,23 @@ namespace ProofGeneration
             return new TermApp(realVId, new List<Term> {r});
         }
 
+        public static Term MapVal(Term m)
+        {
+            return new TermApp(IsaCommonTerms.TermIdentFromName("MapV"), new List<Term> {m});
+        }
+
+        public static Term MapSelect(Term m, Term k)
+        {
+            var select = IsaCommonTerms.TermIdentFromName("(map_select MI)");
+            return new TermApp(select, new List<Term> {m, k});
+        }
+
+        public static Term MapStore(Term m, Term k, Term v)
+        {
+            var store = IsaCommonTerms.TermIdentFromName("(map_store MI)");
+            return new TermApp(store, new List<Term> {m, k, v});
+        }
+
         public static Term LookupVar(Term varContext, Term normalState, Term var)
         {
             return new TermApp(lookupVarId, new List<Term> {varContext, normalState, var});

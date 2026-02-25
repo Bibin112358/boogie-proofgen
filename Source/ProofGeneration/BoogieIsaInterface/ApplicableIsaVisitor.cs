@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Isabelle.Ast;
 using Microsoft.Boogie;
 using ProofGeneration.BoogieIsaInterface.VariableTranslation;
@@ -61,12 +62,22 @@ namespace ProofGeneration
 
         public Term Visit(MapSelect mapSelect)
         {
-            throw new NotImplementedException();
+            if (_args.Count != 2)
+            {
+                throw new NotImplementedException("Only 1-ary map are supported");
+            }
+
+            return IsaBoogieTerm.MapSelect(_args[0], _args[1]);
         }
 
         public Term Visit(MapStore mapStore)
         {
-            throw new NotImplementedException();
+            if (_args.Count != 3)
+            {
+                throw new NotImplementedException("Only 1-ary map are supported");
+            }
+
+            return IsaBoogieTerm.MapStore(_args.First(), _args[1], _args.Last());
         }
 
         public Term Visit(ArithmeticCoercion arithCoercion)

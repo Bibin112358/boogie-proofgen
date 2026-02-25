@@ -100,34 +100,49 @@ namespace ProofGeneration.Util
             return node;
         }
 
-        #region maps 
-        
-        //do not support maps
+        #region maps
+        //do not support multiple arity maps
+        //experimental support for 1-arity maps
         public override Expr VisitLambdaExpr(LambdaExpr node)
         {
             problematicNode = node;
             return node;
         }
 
-        public override MapType VisitMapType(MapType node)
+        public override Type VisitMapType(MapType node)
         {
-            problematicNode = node;
-            return node;
+            if (node.MapArity != 1)
+            {
+                problematicNode = node;
+                return node;
+            }
+
+            return base.VisitMapType(node);
         }
 
         public override AssignLhs VisitMapAssignLhs(MapAssignLhs node)
         {
-            problematicNode = node;
-            return node;
+            if (node.Indexes.Count != 1)
+            {
+              problematicNode = node;
+              return node;
+            }
+
+            return base.VisitMapAssignLhs(node);
         }
 
         public override Type VisitMapTypeProxy(MapTypeProxy node)
         {
-            problematicNode = node;
-            return node;
+            if (node.MapArity != 1)
+            {
+              problematicNode = node;
+              return node;
+            }
+
+            return base.VisitMapTypeProxy(node);
         }
         #endregion
-        
+
         #region bitvectors
         
         //do not support bitvectors
