@@ -50,6 +50,14 @@ namespace ProofGeneration.VCProofGen
             {
                 result = Real2U(func);
             }
+            else if (name.Equals("MapType0Select"))
+            {
+              result = MapType0Select(func);
+            }
+            else if (name.Equals("MapType0Store"))
+            {
+              result = MapType0Store(func);
+            }
             else if (IsTypeConstr(name, out var constrName))
             {
                 result = TypeConstructor(constrName, func);
@@ -77,6 +85,8 @@ namespace ProofGeneration.VCProofGen
         public abstract Term Int2U(Function func);
         public abstract Term Bool2U(Function func);
         public abstract Term Real2U(Function func);
+        public abstract Term MapType0Select(Function func);
+        public abstract Term MapType0Store(Function func);
         public abstract Term TypeConstructor(string constrName, Function func);
         public abstract Term TypeConstructorInverse(string constrName, int index, Function func);
 

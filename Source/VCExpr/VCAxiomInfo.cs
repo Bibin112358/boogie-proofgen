@@ -1,4 +1,5 @@
-﻿using Microsoft.Boogie;
+﻿using System.Collections.Generic;
+using Microsoft.Boogie;
 using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie.ProofGen
@@ -83,7 +84,66 @@ namespace Microsoft.Boogie.ProofGen
             Decl = decl;
         }
     }
-    
+
+    public class VcMapAxiom0Info : VCAxiomInfo
+    {
+      public Function Select { get; }
+      public Function Store { get; }
+      public MapType AbstractedType { get; }
+      public List<TypeVariable> ImplicitSelectParams { get; }
+      public List<TypeVariable> ExplicitSelectParams { get; }
+      public List<Type> OriginalInTypes { get; }
+
+      public VcMapAxiom0Info(Function select, Function store, MapType abstractedType,
+        List<TypeVariable> implicitSelectParams, List<TypeVariable> explicitSelectParams,
+        List<Type> originalInTypes, VCExpr expr) : base(expr)
+      {
+          Select = select;
+          Store = store;
+          AbstractedType = abstractedType;
+          ImplicitSelectParams = implicitSelectParams;
+          ExplicitSelectParams = explicitSelectParams;
+          OriginalInTypes = originalInTypes;
+      }
+    }
+
+    public class VcMapAxiom1Info : VCAxiomInfo
+    {
+        public Function Select { get; }
+        public Function Store { get; }
+        public MapType AbstractedType { get; }
+        public List<TypeVariable> ExplicitSelectParams { get; }
+
+        public VcMapAxiom1Info(Function select, Function store, MapType abstractedType,
+          List<TypeVariable> explicitSelectParams, VCExpr expr) : base(expr)
+        {
+            Select = select;
+            Store = store;
+            AbstractedType = abstractedType;
+            ExplicitSelectParams = explicitSelectParams;
+        }
+    }
+
+    public class VcMapTypeAxiomInfo : VCAxiomInfo
+    {
+        public List<TypeVariable> ImplicitTypeParams { get; }
+        public List<TypeVariable> ExplicitTypeParams { get; }
+        public List<Type> OriginalInTypes { get; }
+        public Type OriginalResult { get; }
+
+        public VcMapTypeAxiomInfo(List<TypeVariable> implicitTypeParams,
+          List<TypeVariable> explicitTypeParams,
+          List<Type> originalInTypes,
+          Type originalResult,
+          VCExpr expr) : base(expr)
+        {
+            ImplicitTypeParams = implicitTypeParams;
+            ExplicitTypeParams = explicitTypeParams;
+            OriginalInTypes = originalInTypes;
+            OriginalResult = originalResult;
+        }
+    }
+
     /// <summary>
     /// <see cref="BoxedOfUnboxed"/>: boxing followed by unboxing leads to the same value.
     /// <see cref="UnboxedOfBoxed"/>: unboxing followed by boxing leads to the same value, if the value has the correct type

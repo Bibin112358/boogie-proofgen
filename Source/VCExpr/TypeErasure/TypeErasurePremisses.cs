@@ -736,9 +736,16 @@ namespace Microsoft.Boogie.TypeErasure
       // the store function does not have any explicit type parameters
       Contract.Assert(explicitStoreParams.Count == 0);
 
-      AxBuilder.AddTypeAxiom(GenMapAxiom0(select, store, abstractedType.Result, implicitSelectParams,
-        explicitSelectParams, originalInTypes));
-      AxBuilder.AddTypeAxiom(GenMapAxiom1(select, store, abstractedType.Result, explicitSelectParams));
+      // TODO: weaken axiom, by adding antecedent
+      var mapaxiom0 = GenMapAxiom0(select, store, abstractedType.Result, implicitSelectParams,
+        explicitSelectParams, originalInTypes);
+      var proofgeninfo0 = new VcMapAxiom0Info(select, store, abstractedType, implicitSelectParams,
+        explicitSelectParams, originalInTypes, mapaxiom0);
+      AxBuilder.AddTypeAxiom(mapaxiom0, proofgeninfo0);
+
+      var mapaxiom1 = GenMapAxiom1(select, store, abstractedType.Result, explicitSelectParams);
+      var proofgeninfo1 = new VcMapAxiom1Info(select, store, abstractedType, explicitSelectParams, mapaxiom1);
+      AxBuilder.AddTypeAxiom(mapaxiom1, proofgeninfo1);
     }
 
     protected void GenTypeAxiomParams(MapType abstractedType, TypeCtorDecl synonymDecl,
@@ -816,10 +823,11 @@ namespace Microsoft.Boogie.TypeErasure
 
       if (AxBuilder.U.Equals(ioTypes[i]))
       {
-        AxBuilder.AddTypeAxiom(
-          AxBuilderPremisses.GenFunctionAxiom(res,
-            implicitTypeParams, explicitTypeParams,
-            originalInTypes, originalResult));
+        var expr = AxBuilderPremisses.GenFunctionAxiom(res, implicitTypeParams, explicitTypeParams,
+          originalInTypes, originalResult);
+        var proofgeninfo = new VcMapTypeAxiomInfo(implicitTypeParams, explicitTypeParams, originalInTypes,
+          originalResult, expr);
+        AxBuilder.AddTypeAxiom(expr, proofgeninfo);
       }
 
       return res;

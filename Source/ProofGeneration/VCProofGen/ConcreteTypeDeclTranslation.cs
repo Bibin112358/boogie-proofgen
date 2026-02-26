@@ -61,6 +61,16 @@ namespace ProofGeneration.VCProofGen
             return IsaBoogieVC.PrimTypeClosed(IsaBoogieType.IntType());
         }
 
+        public override Term MapType0Select(Function func)
+        {
+            return IsaBoogieTerm.MapSelectId;
+        }
+
+        public override Term MapType0Store(Function func)
+        {
+            return IsaBoogieTerm.MapStoreId;
+        }
+
         public override Term Type(Function func)
         {
             return IsaBoogieVC.VCType(_boogieContextIsa.absValTyMap);
