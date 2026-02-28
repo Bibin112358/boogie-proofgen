@@ -63,7 +63,12 @@ namespace ProofGeneration
                 throw new System.NotImplementedException();
             }
 
-            return new TermApp(tmapId, new TermList(keyTypes), valueType);
+            if (keyTypes.Count != 1)
+            {
+                throw new System.NotImplementedException("Only 1-ary map are supported");
+            }
+
+            return new TermApp(tmapId, keyTypes[0], valueType);
         }
 
         public static TypeIsa ValType(TypeIsa absValType)

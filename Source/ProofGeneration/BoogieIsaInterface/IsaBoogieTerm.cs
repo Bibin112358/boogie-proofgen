@@ -88,9 +88,11 @@ namespace ProofGeneration
         public static TermIdent SematicsProcSpecSatisfied { get; } = IsaCommonTerms.TermIdentFromName("Semantics.proc_body_satisfies_spec");
         public static TermIdent ConvertValToRealId { get; } = IsaCommonTerms.TermIdentFromName("convert_val_to_real");
 
-        public static TermIdent MapVId { get; } = IsaCommonTerms.TermIdentFromName("MapV");
-        public static TermIdent MapSelectId { get; } = IsaCommonTerms.TermIdentFromName("(map_select MI)");
-        public static TermIdent MapStoreId { get; } = IsaCommonTerms.TermIdentFromName("(map_store MI)");
+        private static TermIdent MapVId { get; } = IsaCommonTerms.TermIdentFromName("MapV");
+        private static TermIdent MapSelectExprId { get; } = IsaCommonTerms.TermIdentFromName("MapSelect");
+        private static TermIdent MapStoreExprId { get; } = IsaCommonTerms.TermIdentFromName("MapStore");
+        public static TermIdent MapSelectImplId { get; } = IsaCommonTerms.TermIdentFromName("(map_select MI)");
+        public static TermIdent MapStoreImplId { get; } = IsaCommonTerms.TermIdentFromName("(map_store MI)");
 
         //TODO initialize all the default constructors, so that they only need to be allocated once (Val, Var, etc...)
 
@@ -213,12 +215,12 @@ namespace ProofGeneration
 
         public static Term MapSelect(Term m, Term k)
         {
-            return new TermApp(MapSelectId, new List<Term> {m, k});
+            return new TermApp(MapSelectExprId, new List<Term> {m, k});
         }
 
         public static Term MapStore(Term m, Term k, Term v)
         {
-            return new TermApp(MapStoreId, new List<Term> {m, k, v});
+            return new TermApp(MapStoreExprId, new List<Term> {m, k, v});
         }
 
         public static Term LookupVar(Term varContext, Term normalState, Term var)

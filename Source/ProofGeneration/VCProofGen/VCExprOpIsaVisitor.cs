@@ -231,14 +231,12 @@ namespace ProofGeneration.VCProofGen
 
         public Term VisitSelectOp(VCExprNAry node, List<Term> arg)
         {
-            var TODO = IsaCommonTerms.TermIdentFromName("TODO_smt_vs_select_op");
-            return new TermApp(TODO, arg);
+            return new TermApp(IsaCommonTerms.TermIdentFromName("MapType0Select"), arg);
         }
 
         public Term VisitStoreOp(VCExprNAry node, List<Term> arg)
         {
-            var TODO = IsaCommonTerms.TermIdentFromName("TODO_smt_vs_store_op");
-            return new TermApp(TODO, arg);
+            return new TermApp(IsaCommonTerms.TermIdentFromName("MapType0Store"), arg);
         }
 
         public Term VisitSubOp(VCExprNAry node, List<Term> arg)

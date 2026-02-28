@@ -63,12 +63,12 @@ namespace ProofGeneration.VCProofGen
 
         public override Term MapType0Select(Function func)
         {
-            return IsaBoogieTerm.MapSelectId;
+            return IsaBoogieTerm.MapSelectImplId;
         }
 
         public override Term MapType0Store(Function func)
         {
-            return IsaBoogieTerm.MapStoreId;
+            return IsaBoogieTerm.MapStoreImplId;
         }
 
         public override Term Type(Function func)
