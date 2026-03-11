@@ -165,8 +165,6 @@ namespace ProofGeneration.CfgToDag
                 new ContextElem(
                     new List<Tuple<TermIdent, TypeIsa>>
                     {
-                        Tuple.Create((TermIdent) boogieContext.absValTyMap,
-                            IsaBoogieType.AbstractValueTyFunType(absValType)),
                         Tuple.Create((TermIdent) boogieContext.funContext, IsaBoogieType.FunInterpType(absValType))
                     },
                     new List<Term>

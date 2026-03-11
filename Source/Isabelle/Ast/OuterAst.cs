@@ -236,6 +236,24 @@ namespace Isabelle.Ast
         }
     }
 
+    public class Interpretation : OuterDecl
+    {
+        public Interpretation(string context, IList<string> args, Proof proof) : base("Interpretation")
+        {
+            Context = context;
+            Arguments = new List<string>(args);
+            Proof = proof;
+        }
+
+        public string Context { get; }
+        public List<string> Arguments { get; }
+        public Proof Proof { get; }
+
+        public override R Dispatch<R>(OuterDeclVisitor<R> visitor)
+        {
+            return visitor.VisitInterpretation(this);
+        }
+    }
 
     public class MLDecl : OuterDecl
     {

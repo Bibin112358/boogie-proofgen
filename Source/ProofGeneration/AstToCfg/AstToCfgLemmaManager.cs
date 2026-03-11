@@ -855,7 +855,7 @@ namespace ProofGeneration.AstToCfg
                "proof (cases j)",
                "case 0",
                "then show ?thesis",
-               "using valid_configuration_def less.prems(1) is_final.elims(2) " + contId + "_def" + " by fastforce",
+               "using ast_valid_configuration_def less.prems(1) is_final.elims(2) " + contId + "_def" + " by fastforce",
                "next",
                "case (Suc j')",
                "show ?thesis",

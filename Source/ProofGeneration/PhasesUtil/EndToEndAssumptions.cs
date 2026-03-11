@@ -17,7 +17,7 @@ namespace ProofGeneration.PhasesUtil
                 null,
                 TermBinary.MetaImplies(IsaBoogieTerm.IsClosedType(bvTypeTerm),
                     TermQuantifier.Exists(new List<Identifier> {bvValue},
-                        null,
+                        new List<TypeIsa>{IsaBoogieType.ValTypeId},
                         TermBinary.Eq(IsaBoogieTerm.TypeToVal(absValTyMap, bvValueTerm), bvTypeTerm)
                     )));
         }
@@ -26,7 +26,7 @@ namespace ProofGeneration.PhasesUtil
         {
             Identifier boundVar = new SimpleIdentifier("v");
             return TermQuantifier.MetaAll(new List<Identifier> {boundVar},
-                null,
+                new List<TypeIsa>{IsaBoogieType.ValTypeId},
                 IsaBoogieTerm.IsClosedType(IsaBoogieTerm.TypeToVal(absValTyMap, new TermIdent(boundVar)))
             );
         }

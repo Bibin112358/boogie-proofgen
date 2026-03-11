@@ -24,6 +24,7 @@ namespace Isabelle.Ast
         public abstract R VisitDeclareDecl(DeclareDecl d);
 
         public abstract R VisitMLDecl(MLDecl d);
+        public abstract R VisitInterpretation(Interpretation interpretation);
     }
 
     public abstract class TermVisitor<R>

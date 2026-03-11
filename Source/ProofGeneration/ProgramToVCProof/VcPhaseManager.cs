@@ -83,7 +83,11 @@ namespace ProofGeneration.ProgramToVCProof
             var afterPassificationLocale =
                 GenerateLocale("passification", passiveLemmaManager, afterPassificationDecls);
 
-            var passiveOuterDecls = new List<OuterDecl> {vcProofData.VcLocale};
+            var passiveOuterDecls = new List<OuterDecl> {
+              new Interpretation("semantics", new List<string>{"wf_select", "wf_store"},
+                new Proof(new List<string> {"using locale_select locale_store semantics.intro by blast"})
+              ),
+              vcProofData.VcLocale};
             passiveOuterDecls.Add(afterPassificationLocale);
 
             //generate axiom
@@ -148,7 +152,8 @@ namespace ProofGeneration.ProgramToVCProof
                 new Theory(theoryName,
                     new List<string>
                     {
-                        "Boogie_Lang.Semantics", "Boogie_Lang.Util", "Boogie_Lang.VCHints", "Boogie_Lang.VCPhaseML",
+                        "Boogie_Lang.Semantics", "Boogie_Lang.Util", "Boogie_Lang.VCHints", "Boogie_Lang.VCPhaseML", "Boogie_Lang.MapExample",
+                        "Boogie_Lang.PassificationEndToEnd", "Boogie_Lang.Ast", "Boogie_Lang.Ast_Cfg_Transformation", "Boogie_Lang.BackedgeElim", "Boogie_Lang.TypingML",
                         passiveProgAccess.TheoryName(), 
                         beforePassiveProgAccess != null ? beforePassiveProgAccess.TheoryName() : ""
                     },

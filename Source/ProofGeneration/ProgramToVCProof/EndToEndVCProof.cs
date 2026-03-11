@@ -637,23 +637,24 @@ namespace ProofGeneration.ProgramToVCProof
                     var ctorApp =
                         new TermApp(ctorFun,
                             new TermApp(
-                                IsaBoogieVC.VCTypeConstructor(ctorDeclAxInfo.Decl.Name, ctorDeclAxInfo.Decl.Arity),
+                                // TODO(bibinm): is it correct to fix for maps? What about non-maps?
+                                IsaBoogieType.tmapClosedId,
                                 ids.Select(id => (Term) new TermIdent(id)).ToList())
                         );
                     var body = TermBinary.Eq(ctorApp, new IntConst(ctorDeclAxInfo.CtorValue));
                     var statement = ids.Any() ? (Term) TermQuantifier.ForAll(ids, null, body) : body;
                     lemmas.Add(new LemmaDecl(ctorLemmaName(ctorDeclAxInfo.Decl), statement,
-                        new Proof(new List<string> {"by " + ProofUtil.Simp(ctorDeclListName + "_def")})));
+                        // TODO(bibinm): is it correct to fix for maps? What about non-maps?
+                        new Proof(new List<string> {"by " + ProofUtil.Simp()})));
                 }
 
             var def = DefDecl.CreateWithoutArg(ctorDeclListName, new TermList(typeConstrCtorList));
 
+            // TODO(bibinm): is it correct to harcode ctor of map type to 3?
             funEquations.Add(new Tuple<IList<Term>, Term>(
-                new List<Term> {IsaCommonTerms.TermIdentFromName("(TConC s _)")},
-                IsaCommonTerms.TheOption(new TermApp(IsaCommonTerms.TermIdentFromName("map_of"),
-                    new List<Term>
-                        {IsaCommonTerms.TermIdentFromName(ctorDeclListName), IsaCommonTerms.TermIdentFromName("s")})
-                )));
+                new List<Term> {IsaCommonTerms.TermIdentFromName("(TMapC _ _)")},
+                new IntConst(3)
+                ));
 
             var result =
                 new List<OuterDecl>
@@ -906,9 +907,25 @@ namespace ProofGeneration.ProgramToVCProof
                 }
                 else if (vcAx is LeftInverseAxiomInfo leftInvInfo)
                 {
-                    sb.AppendLine(ProofUtil.Apply("rule " +
-                                                  IsaBoogieVC.LeftInvLemmaName(leftInvInfo.projectedIdx,
-                                                      leftInvInfo.Decl.Arity)));
+                    // TODO(bibinm): is this the best way to handle MapType axioms?
+                    if (leftInvInfo.Decl.Name.StartsWith("MapType"))
+                    {
+                        switch (leftInvInfo.projectedIdx)
+                        {
+                            case 0:
+                                sb.AppendLine(ProofUtil.Apply("rule key_tyC_preserved"));
+                                break;
+                            case 1:
+                                sb.AppendLine(ProofUtil.Apply("rule val_tyC_preserved"));
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        sb.AppendLine(ProofUtil.Apply("rule " +
+                                                      IsaBoogieVC.LeftInvLemmaName(leftInvInfo.projectedIdx,
+                                                        leftInvInfo.Decl.Arity)));
+                    }
                 }
                 else if (vcAx is BasicTypeCastAxiomInfo castAxiomInfo)
                 {
@@ -949,6 +966,18 @@ namespace ProofGeneration.ProgramToVCProof
                         default:
                             throw new ArgumentOutOfRangeException();
                     }
+                }
+                else if (vcAx is VcMapTypeAxiomInfo)
+                {
+                    sb.AppendLine(ProofUtil.Apply("rule map_select_type_safe map_store_type_safe"));
+                }
+                else if (vcAx is VcMapAxiom0Info)
+                {
+                    sb.AppendLine("using map_update Closed apply metis");
+                }
+                else if (vcAx is VcMapAxiom1Info)
+                {
+                    sb.AppendLine("using Ax2_wf_val apply blast");
                 }
             }
         }

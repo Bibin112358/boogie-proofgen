@@ -201,7 +201,7 @@ public class CFGOptimizationsEndToEnd
     Term finalState)
   {
     return new TermApp(
-      IsaCommonTerms.TermIdentFromName("Semantics.valid_configuration"),
+      IsaCommonTerms.TermIdentFromName("valid_configuration"),
       boogieContext.absValTyMap,
       boogieContext.varContext,
       boogieContext.funContext,

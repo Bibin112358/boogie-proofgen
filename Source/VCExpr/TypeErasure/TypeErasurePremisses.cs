@@ -973,10 +973,33 @@ namespace Microsoft.Boogie.TypeErasure
         eq = Gen.Eq(selectExpr, val);
       Contract.Assert(eq != null);
       // generate:  type(val) == T, where T is the type of val
+
+      #region proofgen
+      // We need to weaken the axiom for proofgen
+
+      // generate:  type(m) == MapType0Type (type(indexes[0]) (type(val))
+
+      // Get the type constructor function i.e., MapType0Type
+      Function mapTypeRepr = AxBuilderPremisses.GetTypeCtorRepr(typedM.Type.AsCtor.Decl);
+
+      // Build the arguments: (type indexes[0]) (type val)
+      List<VCExpr> mapTypeArgs = new List<VCExpr> {
+        AxBuilderPremisses.Type2Term(origIndexTypes[0], bindings.TypeVariableBindings),
+        AxBuilderPremisses.Type2Term(mapResult, bindings.TypeVariableBindings)
+      };
+
       VCExpr
-        ante = Gen.Eq(
-          AxBuilderPremisses.TypeOf(val),
-          AxBuilderPremisses.Type2Term(mapResult, bindings.TypeVariableBindings));
+        ante = Gen.And(
+          Gen.Eq(
+            AxBuilderPremisses.TypeOf(val),
+            AxBuilderPremisses.Type2Term(mapResult, bindings.TypeVariableBindings) ),
+          // (type m) = MapType0Type (type indexes[0]) (type val)
+          Gen.Eq(
+            AxBuilderPremisses.TypeOf(m),
+            Gen.Function(mapTypeRepr, mapTypeArgs))
+          );
+      #endregion
+
       Contract.Assert(ante != null);
       VCExpr body;
       if (!AxBuilder.U.Equals(Cce.NonNull(select.OutParams[0]).TypedIdent.Type))

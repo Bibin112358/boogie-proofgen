@@ -15,6 +15,16 @@ namespace ProofGeneration
         private static readonly TermIdent tconId = IsaCommonTerms.TermIdentFromName("TCon");
         private static readonly TermIdent tconClosedId = IsaCommonTerms.TermIdentFromName("TConC");
         private static readonly TermIdent tmapId = IsaCommonTerms.TermIdentFromName("TMap");
+        public static readonly TermIdent tmapClosedId = IsaCommonTerms.TermIdentFromName("TMapC");
+
+        public static TypeIsa ValTypeId
+        {
+          get
+          {
+            var absVal = new VarType("a::absval");
+            return new DataType("wf_val", new List<TypeIsa> { absVal });
+          }
+        }
 
         public static TypeIsa VariableDeclsType => IsaCommonTypes.GetDataTypeNoArg("vdecls");
 
@@ -79,11 +89,6 @@ namespace ProofGeneration
         public static TypeIsa LitType()
         {
             return new DataType("lit");
-        }
-
-        public static TypeIsa AbstractValueTyFunType(TypeIsa absValType)
-        {
-            return new DataType("absval_ty_fun", new List<TypeIsa> {absValType});
         }
 
         public static TypeIsa NormalStateType(TypeIsa absValType)

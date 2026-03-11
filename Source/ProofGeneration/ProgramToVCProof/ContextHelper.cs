@@ -24,8 +24,6 @@ namespace ProofGeneration.ProgramToVCProof
 
             var result = new List<Tuple<TermIdent, TypeIsa>>
             {
-                Tuple.Create((TermIdent) boogieContext.absValTyMap, IsaBoogieType.AbstractValueTyFunType(absValType)),
-                Tuple.Create((TermIdent) IsaCommonTerms.TermIdentFromName("MI"), (TypeIsa) new DataType("map_interface", new List<TypeIsa> {absValType})),
                 Tuple.Create((TermIdent) boogieContext.varContext, IsaBoogieType.VarContextType()),
                 Tuple.Create((TermIdent) boogieContext.funContext, IsaBoogieType.FunInterpType(absValType)),
                 Tuple.Create(normalInitState, IsaBoogieType.NormalStateType(absValType))

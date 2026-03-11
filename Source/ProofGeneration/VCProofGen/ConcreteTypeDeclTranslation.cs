@@ -71,6 +71,11 @@ namespace ProofGeneration.VCProofGen
             return IsaBoogieTerm.MapStoreImplId;
         }
 
+        public override Term MapType0Type(Function func)
+        {
+            return IsaBoogieType.tmapClosedId;
+        }
+
         public override Term Type(Function func)
         {
             return IsaBoogieVC.VCType(_boogieContextIsa.absValTyMap);

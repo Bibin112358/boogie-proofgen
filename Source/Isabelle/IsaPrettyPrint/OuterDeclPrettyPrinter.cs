@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Isabelle.Ast;
 
@@ -167,6 +168,16 @@ namespace Isabelle.IsaPrettyPrint
             _sb.Append(d.Code);
             _sb.AppendLine();
             _sb.Append("\\<close>");
+
+            return 0;
+        }
+
+        public override int VisitInterpretation(Interpretation i)
+        {
+
+            _sb.AppendLine();
+            _sb.AppendLine("interpretation " + i.Context + " " + string.Join(" ", i.Arguments));
+            PrintProof(i.Proof);
 
             return 0;
         }

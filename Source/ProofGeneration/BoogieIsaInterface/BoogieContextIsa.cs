@@ -1,4 +1,5 @@
 ﻿using Isabelle.Ast;
+using Isabelle.Util;
 
 namespace ProofGeneration.BoogieIsaInterface
 {
@@ -12,7 +13,8 @@ namespace ProofGeneration.BoogieIsaInterface
 
         public BoogieContextIsa(Term absValTyMap, Term methodContext, Term varContext, Term funContext, Term rtypeEnv)
         {
-            this.absValTyMap = absValTyMap;
+            // TODO(bibinm): properly remove the old abstract value type function
+            this.absValTyMap = IsaCommonTerms.TermIdentFromName(""); // HACK(bibinm)
             this.methodContext = methodContext;
             this.varContext = varContext;
             this.funContext = funContext;

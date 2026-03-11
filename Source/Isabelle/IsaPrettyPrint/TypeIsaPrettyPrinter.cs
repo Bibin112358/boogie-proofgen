@@ -24,6 +24,8 @@ namespace Isabelle.IsaPrettyPrint
             var rArgs = VisitList(t.Args);
             if (t.Args.Count == 0)
                 return IsaPrettyPrinterHelper.Parenthesis(t.Name);
+
+            // TODO(bibinm): should this be comma-separated and bracketed?
             return IsaPrettyPrinterHelper.Parenthesis(rArgs.SpaceAggregate() + t.Name);
         }
 

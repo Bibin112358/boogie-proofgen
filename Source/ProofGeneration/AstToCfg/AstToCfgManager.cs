@@ -134,8 +134,6 @@ namespace ProofGeneration.AstToCfg
               new ContextElem(
                 new List<Tuple<TermIdent, TypeIsa>>
                 {
-                  Tuple.Create((TermIdent) astBoogieContext.absValTyMap,
-                    IsaBoogieType.AbstractValueTyFunType(absValType)),
                   Tuple.Create((TermIdent) astBoogieContext.funContext, IsaBoogieType.FunInterpType(absValType))
                 },
                 new List<Term>

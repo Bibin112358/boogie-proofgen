@@ -634,7 +634,7 @@ namespace ProofGeneration.CfgToDag
             Term finalState)
         {
             return new TermApp(
-                IsaCommonTerms.TermIdentFromName("Semantics.valid_configuration"),
+                IsaCommonTerms.TermIdentFromName("valid_configuration"),
                 boogieContext.absValTyMap,
                 boogieContext.varContext,
                 boogieContext.funContext,
@@ -1044,7 +1044,7 @@ namespace ProofGeneration.CfgToDag
             sb.AppendLine("show ?case");
             sb.AppendLine("proof (cases j)");
             sb.AppendLine(
-                "case 0 with less.prems(1) show ?thesis unfolding Semantics.valid_configuration_def by auto");
+                "case 0 with less.prems(1) show ?thesis unfolding valid_configuration_def by auto");
             sb.AppendLine("next");
             sb.AppendLine("case (Suc j')");
             sb.Append("from less(3) have " + stateRelLoopHeadName + ":");

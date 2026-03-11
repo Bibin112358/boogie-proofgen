@@ -60,13 +60,9 @@ namespace ProofGeneration.ProgramToVCProof
 
         public override MapType VisitMapType(MapType node)
         {
-            // TODO: correctly implemented?
-            ReturnResult(v => IsaBoogieTerm.MapVal(v));
-            //node.TypeParameters.ForEach(t => ReturnResult(Translate(t)));
-            //node.Arguments.ForEach(a => ReturnResult(Translate(a)));
-            //ReturnResult(Translate(node.Result));
+            // TODO(bibinm): correctly implemented?
+            ReturnResult(v => v);
             return node;
-            //throw new NotImplementedException();
         }
 
         public override Type VisitBvType(BvType node)

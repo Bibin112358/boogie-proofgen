@@ -441,6 +441,10 @@ namespace Isabelle.Ast
         public VarType(string name)
         {
             Name = name;
+            // TODO(bibinm): properly change type variable from 'a val to ('a::absval, 'a wf_maps') val
+            if (name == "a") Name = "a::absval, 'a wf_maps";  // HACK(bibinm)
+            //TODO: here assuming that we use "'a" for the abstract value type carrier t --> make t a parameter somewhere
+            // TODO(bibinm): class for handling type classes?
         }
 
         public string Name { get; }

@@ -45,7 +45,7 @@ namespace ProofGeneration
         private static readonly TermIdent redBigBlockId = IsaCommonTerms.TermIdentFromName("red_bigblock");
         private static readonly TermIdent redBigBlockKStepId = IsaCommonTerms.TermIdentFromName("red_bigblock_k_step");
         private static readonly TermIdent redBigBlockMultiId = IsaCommonTerms.TermIdentFromName("rtranclp");
-        private static readonly TermIdent astValidConfigId = IsaCommonTerms.TermIdentFromName("Ast.valid_configuration");
+        private static readonly TermIdent astValidConfigId = IsaCommonTerms.TermIdentFromName("ast_valid_configuration");
         private static readonly TermIdent redExprId = IsaCommonTerms.TermIdentFromName("red_expr");
         private static readonly TermIdent normalStateId = IsaCommonTerms.TermIdentFromName("Normal");
         private static readonly TermIdent magicStateId = IsaCommonTerms.TermIdentFromName("Magic");
@@ -85,14 +85,14 @@ namespace ProofGeneration
 
         public static TermIdent ConvertValToBoolId { get; } = IsaCommonTerms.TermIdentFromName("convert_val_to_bool");
         public static TermIdent ConvertValToIntId { get; } = IsaCommonTerms.TermIdentFromName("convert_val_to_int");
-        public static TermIdent SematicsProcSpecSatisfied { get; } = IsaCommonTerms.TermIdentFromName("Semantics.proc_body_satisfies_spec");
+        public static TermIdent SematicsProcSpecSatisfied { get; } = IsaCommonTerms.TermIdentFromName("proc_body_satisfies_spec");
         public static TermIdent ConvertValToRealId { get; } = IsaCommonTerms.TermIdentFromName("convert_val_to_real");
 
         private static TermIdent MapVId { get; } = IsaCommonTerms.TermIdentFromName("MapV");
         private static TermIdent MapSelectExprId { get; } = IsaCommonTerms.TermIdentFromName("MapSelect");
         private static TermIdent MapStoreExprId { get; } = IsaCommonTerms.TermIdentFromName("MapStore");
-        public static TermIdent MapSelectImplId { get; } = IsaCommonTerms.TermIdentFromName("(map_select MI)");
-        public static TermIdent MapStoreImplId { get; } = IsaCommonTerms.TermIdentFromName("(map_store MI)");
+        public static TermIdent MapSelectImplId { get; } = IsaCommonTerms.TermIdentFromName("wf_select");
+        public static TermIdent MapStoreImplId { get; } = IsaCommonTerms.TermIdentFromName("wf_store");
 
         //TODO initialize all the default constructors, so that they only need to be allocated once (Val, Var, etc...)
 
@@ -875,23 +875,16 @@ namespace ProofGeneration
         public static Term ProcedureIsCorrectCfg(Term funDecls, Term constantDecls, Term uniqueConstants, Term globalDecls, Term axioms,
             Term procedure)
         {
-            var typeInterpId = new SimpleIdentifier("A");
             return
-              TermQuantifier.MetaAll(
-                new List<Identifier> {typeInterpId},
-                null,
                 new TermApp(
-                  IsaCommonTerms.TermIdentFromName("Semantics.proc_is_correct"),
-                  //TODO: here assuming that we use "'a" for the abstract value type carrier t --> make t a parameter somewhere 
-                  new TermWithExplicitType(new TermIdent(typeInterpId), 
-                    IsaBoogieType.AbstractValueTyFunType(new VarType("a"))),
+                  IsaCommonTerms.TermIdentFromName("proc_is_correct"),
                   funDecls,
                   constantDecls,
                   uniqueConstants,
                   globalDecls,
                   axioms,
                   procedure,
-                  IsaBoogieTerm.SematicsProcSpecSatisfied));
+                  IsaBoogieTerm.SematicsProcSpecSatisfied);
         }
         
     }

@@ -313,14 +313,8 @@ namespace ProofGeneration.AstToCfg
         private static Term ProcedureIsCorrect(Term funDecls, Term constantDecls, Term uniqueConstantDecls, Term globalDecls, Term axioms,
             Term procedure)
         {
-            var typeInterpId = new SimpleIdentifier("A");
-            return 
-                TermQuantifier.MetaAll(
-                    new List<Identifier>{typeInterpId},
-                    null,
-                    new TermApp(
+            return new TermApp(
                       IsaCommonTerms.TermIdentFromName("proc_is_correct"),
-                      new TermWithExplicitType(new TermIdent(typeInterpId), IsaBoogieType.AbstractValueTyFunType(new VarType("a"))),
                       funDecls,
                       constantDecls,
                       uniqueConstantDecls,
@@ -328,11 +322,10 @@ namespace ProofGeneration.AstToCfg
                       axioms,
                       procedure,
                       new TermWithExplicitType(
-                        IsaCommonTerms.TermIdentFromName("Ast.proc_body_satisfies_spec"), 
+                        IsaCommonTerms.TermIdentFromName("ast_proc_body_satisfies_spec"),
                         new DataType("satisfies_spec_func_type", new VarType("a"))
                       )
-                    )
-                );
+                    );
         }
     }
 }

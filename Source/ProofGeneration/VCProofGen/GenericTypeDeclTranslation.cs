@@ -74,6 +74,11 @@ namespace ProofGeneration.VCProofGen
             return IsaCommonTerms.TermIdentFromName(uniqueNamer.GetName(func, func.Name));
         }
 
+        public override Term MapType0Type(Function func)
+        {
+            return IsaCommonTerms.TermIdentFromName(uniqueNamer.GetName(func, func.Name));
+        }
+
         public override Term TypeConstructor(string constrName, Function func)
         {
             return IsaCommonTerms.TermIdentFromName(uniqueNamer.GetName(func, func.Name));
