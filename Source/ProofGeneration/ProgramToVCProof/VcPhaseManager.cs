@@ -85,7 +85,7 @@ namespace ProofGeneration.ProgramToVCProof
 
             var passiveOuterDecls = new List<OuterDecl> {
               new Interpretation("semantics", new List<string>{"wf_select", "wf_store"},
-                new Proof(new List<string> {"using locale_select locale_store semantics.intro by blast"})
+                new Proof(new List<string> {"."})
               ),
               vcProofData.VcLocale};
             passiveOuterDecls.Add(afterPassificationLocale);

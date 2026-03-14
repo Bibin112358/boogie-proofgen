@@ -223,7 +223,8 @@ namespace ProofGeneration.ProgramToVCProof
                 new List<Term> {new TermList(boogieTyParams), new TermList(boogieValParams)});
 
             //RHS of function definition, case splitting on whether boogie function reduces
-            Term res = IsaCommonTerms.TermIdentFromName(uniqueNamer.GetName("res", "res"));
+            Term resNoType = IsaCommonTerms.TermIdentFromName(uniqueNamer.GetName("res", "res"));
+            Term res = new TermWithExplicitType(resNoType, IsaBoogieType.ValTypeId);
 
             var typeVisitorSubst = new TypeIsaVisitor(new SimpleVarSubstitution<TypeVariable>(typeVarToTerm), true);
             var outputType = f.OutParams[0].TypedIdent.Type;
@@ -583,6 +584,7 @@ namespace ProofGeneration.ProgramToVCProof
         {
             var funEquations = new List<Tuple<IList<Term>, Term>>();
             var typeConstrCtorList = new List<Term>();
+            var mapCtorValue = new IntConst(3);  // I think ctor value for MapType is 3 anyway, but it gets overwritten later
             var lemmas = new List<LemmaDecl>();
 
             Term ctorFun = IsaCommonTerms.TermIdentFromName(ctorName);
@@ -595,6 +597,7 @@ namespace ProofGeneration.ProgramToVCProof
             };
 
             foreach (var vcAxInfo in vcAxiomsInfo)
+            {
                 if (vcAxInfo is CtorBasicTypeAxiomInfo ctorBasicAxInfo)
                 {
                     if (ctorBasicAxInfo.Type.IsInt)
@@ -612,7 +615,7 @@ namespace ProofGeneration.ProgramToVCProof
                             new IntConst(ctorBasicAxInfo.CtorValue)));
                         lemmas.Add(basicTypeLemma(ctorBasicAxInfo.Type,
                             IsaBoogieType.PrimType(IsaBoogieType.BoolType(), true), ctorBasicAxInfo.CtorValue));
-                    } 
+                    }
                     else if (ctorBasicAxInfo.Type.IsReal)
                     {
                         funEquations.Add(new Tuple<IList<Term>, Term>(
@@ -632,29 +635,46 @@ namespace ProofGeneration.ProgramToVCProof
                         new StringConst(ctorDeclAxInfo.Decl.Name),
                         new IntConst(ctorDeclAxInfo.CtorValue)));
 
+                    if (ctorDeclAxInfo.Decl.Name.StartsWith("MapType"))
+                    {
+                        // Could there be multiple constructors for MapType? With different ctor values?
+                        mapCtorValue = new IntConst(ctorDeclAxInfo.CtorValue);
+                    }
+
+                    // Use TMapC instead of TConC for maps
+                    Term typeConstructor = ctorDeclAxInfo.Decl.Name.StartsWith("MapType")
+                      ? IsaBoogieType.tmapClosedId
+                      : IsaBoogieVC.VCTypeConstructor(ctorDeclAxInfo.Decl.Name, ctorDeclAxInfo.Decl.Arity);
+
                     var ids = Enumerable.Range(1, ctorDeclAxInfo.Decl.Arity)
                         .Select(i => (Identifier) new SimpleIdentifier("t" + i)).ToList();
                     var ctorApp =
                         new TermApp(ctorFun,
                             new TermApp(
-                                // TODO(bibinm): is it correct to fix for maps? What about non-maps?
-                                IsaBoogieType.tmapClosedId,
+                                typeConstructor,
                                 ids.Select(id => (Term) new TermIdent(id)).ToList())
                         );
                     var body = TermBinary.Eq(ctorApp, new IntConst(ctorDeclAxInfo.CtorValue));
                     var statement = ids.Any() ? (Term) TermQuantifier.ForAll(ids, null, body) : body;
                     lemmas.Add(new LemmaDecl(ctorLemmaName(ctorDeclAxInfo.Decl), statement,
-                        // TODO(bibinm): is it correct to fix for maps? What about non-maps?
-                        new Proof(new List<string> {"by " + ProofUtil.Simp()})));
+                        // `ctorDeclListName + "_def"` not necessary for maps, but does not hurt
+                        new Proof(new List<string> {"by " + ProofUtil.Simp(ctorDeclListName + "_def")})));
                 }
+            }
 
             var def = DefDecl.CreateWithoutArg(ctorDeclListName, new TermList(typeConstrCtorList));
 
-            // TODO(bibinm): is it correct to harcode ctor of map type to 3?
+            funEquations.Add(new Tuple<IList<Term>, Term>(
+              new List<Term> {IsaCommonTerms.TermIdentFromName("(TConC s _)")},
+              IsaCommonTerms.TheOption(new TermApp(IsaCommonTerms.TermIdentFromName("map_of"),
+                new List<Term>
+                  {IsaCommonTerms.TermIdentFromName(ctorDeclListName), IsaCommonTerms.TermIdentFromName("s")})
+              )));
+
             funEquations.Add(new Tuple<IList<Term>, Term>(
                 new List<Term> {IsaCommonTerms.TermIdentFromName("(TMapC _ _)")},
-                new IntConst(3)
-                ));
+                mapCtorValue
+              ));
 
             var result =
                 new List<OuterDecl>

@@ -64,7 +64,8 @@ namespace ProofGeneration.BoogieIsaInterface
 
         public static Term ValOfClosedTy(Term absValTyMap, Term ty)
         {
-            return new TermApp(ValOfClosedTyId, new List<Term> {absValTyMap, ty});
+            Term valOfClosedTy = new TermApp(ValOfClosedTyId, new List<Term> {absValTyMap, ty});
+            return new TermWithExplicitType(valOfClosedTy, IsaBoogieType.ValTypeId);
         }
     }
 }
