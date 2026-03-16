@@ -83,6 +83,7 @@ namespace ProofGeneration.ProgramToVCProof
         public IList<OuterDecl> Prelude()
         {
             var assmLabels = assmManager.AllAssumptionLabels();
+            assmLabels.AddRange(new List<string>{"int_inverse_3", "locale_select", "locale_store"});
             var globalAssmsLemmas = new LemmasDecl(globalAssmsName, assmLabels);
 
             var closedAssm = assmManager.GetAssumptionLabel(AssumptionManager.SpecialAssumptionsKind.TypeValClosed);
