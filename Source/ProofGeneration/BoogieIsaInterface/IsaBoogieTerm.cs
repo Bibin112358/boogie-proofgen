@@ -76,6 +76,7 @@ namespace ProofGeneration
         private static readonly TermIdent existsTypeId = IsaCommonTerms.TermIdentFromName("ExistsT");
 
         private static readonly TermIdent closedTypeId = IsaCommonTerms.TermIdentFromName("closed");
+        private static readonly TermIdent validClosedTypeId = IsaCommonTerms.TermIdentFromName("valid_closed");
         private static readonly TermIdent instTypeId = IsaCommonTerms.TermIdentFromName("instantiate");
 
         private static readonly TermIdent axiomAssmId = IsaCommonTerms.TermIdentFromName("axiom_assm");
@@ -865,6 +866,11 @@ namespace ProofGeneration
         public static Term IsClosedType(Term ty)
         {
             return new TermApp(closedTypeId, ty);
+        }
+
+        public static Term IsValidClosedType(Term ty)
+        {
+            return new TermApp(validClosedTypeId, ty);
         }
 
         public static Term InstantiateType(Term rtypeEnv, Term ty)

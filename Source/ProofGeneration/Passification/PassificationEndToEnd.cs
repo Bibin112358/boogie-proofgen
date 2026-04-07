@@ -296,7 +296,7 @@ namespace ProofGeneration.Passification
                 "closed_ty_passive_vars",
                 ContextElem.CreateWithAssumptions(TermBinary.Eq(IsaBoogieTerm.LookupVarTy(passiveVarContext, x),
                     IsaCommonTerms.SomeOption(tauTerm))),
-                IsaBoogieTerm.IsClosedType(IsaBoogieTerm.InstantiateType(boogieContext.rtypeEnv, tauTerm)),
+                IsaBoogieTerm.IsValidClosedType(IsaBoogieTerm.InstantiateType(boogieContext.rtypeEnv, tauTerm)),
                 new Proof(new List<string>
                 {
                     "apply (rule lookup_ty_pred[OF assms(1)])",
