@@ -899,7 +899,8 @@ namespace ProofGeneration.ProgramToVCProof
                 }
                 else if (vcAx is VcFunctionAxiomInfo vcFunAxInfo)
                 {
-                    sb.AppendLine(ProofUtil.Apply("fun_output_axiom NonEmptyTypes: " + nonEmptyTypesAssmName));
+                    sb.AppendLine("using Closed closed_inv2_2 " +
+                                  ProofUtil.Apply("fun_output_axiom NonEmptyTypes: " + nonEmptyTypesAssmName));
                     sb.AppendLine("using closed_inv1 " +
                                   ProofUtil.OF("finterp_extract_2",
                                       finterpAssmName,

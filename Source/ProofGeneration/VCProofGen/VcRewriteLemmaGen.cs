@@ -63,7 +63,7 @@ namespace ProofGeneration.VCProofGen
                  * with the extracted versions. */
                 lhsExtractArgs = false;
                 if (hasTypeQuantification)
-                    proofMethod = "unfolding Let_def using prim_type_vc_lemmas by blast";
+                    proofMethod = "unfolding Let_def by (force simp: prim_type_vc_lemmas)";
                 else
                     proofMethod = "by blast";
             }
