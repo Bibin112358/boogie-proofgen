@@ -68,17 +68,13 @@ namespace ProofGeneration
 
         public static Term TMapType(List<Term> keyTypes, Term valueType, bool useClosedConstructor = false)
         {
-            if (useClosedConstructor)
-            {
-                throw new System.NotImplementedException();
-            }
-
             if (keyTypes.Count != 1)
             {
                 throw new System.NotImplementedException("Only 1-ary map are supported");
             }
 
-            return new TermApp(tmapId, keyTypes[0], valueType);
+            var id = useClosedConstructor ? tmapClosedId : tmapId;
+            return new TermApp(id, keyTypes[0], valueType);
         }
 
         public static TypeIsa ValType(TypeIsa absValType)
