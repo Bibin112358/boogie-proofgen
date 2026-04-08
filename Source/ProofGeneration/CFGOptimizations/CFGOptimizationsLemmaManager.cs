@@ -636,7 +636,7 @@ public class CFGOptimizationsLemmaManager
     
     var varContextName = "\\<Lambda>";
     IList<Term> terms = new List<Term>();
-    terms.Add(IsaCommonTerms.TermIdentFromName("A"));
+    terms.Add(IsaCommonTerms.TermIdentFromName(""));
     terms.Add(IsaCommonTerms.TermIdentFromName("M"));
     terms.Add(IsaCommonTerms.TermIdentFromName(varContextName));
     terms.Add(IsaCommonTerms.TermIdentFromName("\\<Gamma>"));

@@ -22,7 +22,7 @@ namespace ProofGeneration.Util
                 Spacer = spacer
             };
             reservedNames = new HashSet<string>();
-            reservedNames.Add("A"); //value to abstract value map
+            reservedNames.Add(""); //value to abstract value map
             reservedNames.Add("abs");
 
             illegalChars = new List<char>();
