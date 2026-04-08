@@ -23,7 +23,7 @@ def generate_proofs(input_dir, output_dir, boogie_proofgen_bin):
                     first_line = f.readline().strip('\n')
                     if(first_line != "//:: ProofGen(IgnoreFile)"):
                         # check whether Boogie can produce certificates
-                        errorcode = subprocess.run([boogie_proofgen_bin, boogie_file_path],stdout=subprocess.DEVNULL)
+                        errorcode = subprocess.run([boogie_proofgen_bin, "/typeEncoding:p", boogie_file_path],stdout=subprocess.DEVNULL)
                         if(errorcode.returncode == 0):
                             print("Generated proofs for: " + boogie_file_path)
                             n_success += 1
