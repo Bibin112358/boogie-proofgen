@@ -1,3 +1,5 @@
+//:: ProofGen(IgnoreFile)
+
 var af: [int]int;
 var ag: [int]int;
 var ah: [int]int;

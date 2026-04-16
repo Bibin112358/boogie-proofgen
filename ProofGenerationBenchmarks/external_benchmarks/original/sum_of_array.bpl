@@ -1,3 +1,5 @@
+//:: ProofGen(IgnoreFile)
+
 // sum of content of a from position to position
 function sum_from_to([int]int, int, int) returns(int);
 axiom ( forall a: [int]int, low, high: int ::

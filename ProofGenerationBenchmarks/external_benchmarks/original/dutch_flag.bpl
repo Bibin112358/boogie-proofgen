@@ -1,3 +1,5 @@
+//:: ProofGen(IgnoreFile)
+
 const blue: int;
 const white: int;
 const red: int;

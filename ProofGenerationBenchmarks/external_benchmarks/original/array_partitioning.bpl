@@ -1,3 +1,5 @@
+//:: ProofGen(IgnoreFile)
+
 // elements in a[left..right] are partitioned at index according to value pivot
 function is_LT_pivot (pivot: int, a: [int]int, left: int, right: int, index: int) returns(bool)
 { ( forall k: int  ::  left <= right  &&  left <= k  &&  k < index  ==>  a[k] <= pivot ) }

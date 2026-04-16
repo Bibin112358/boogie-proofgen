@@ -1,3 +1,5 @@
+//:: ProofGen(IgnoreFile)
+
 // sum of content of A from position to position
 function is_max (m: int, a: [int]int, low: int, high: int) returns(bool)
 { ( forall j: int :: low <= j  && j <= high  ==>  a[j] <= m ) }

@@ -1,3 +1,5 @@
+//:: ProofGen(IgnoreFile)
+
 function is_ordered (a: [int]int) returns (bool)
 { ( forall k: int :: a[k] <= a[k+1] ) }
 			
