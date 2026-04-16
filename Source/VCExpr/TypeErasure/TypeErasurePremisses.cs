@@ -983,10 +983,11 @@ namespace Microsoft.Boogie.TypeErasure
       Function mapTypeRepr = AxBuilderPremisses.GetTypeCtorRepr(typedM.Type.AsCtor.Decl);
 
       // Build the arguments: (type indexes[0]) (type val)
-      List<VCExpr> mapTypeArgs = new List<VCExpr> {
-        AxBuilderPremisses.Type2Term(origIndexTypes[0], bindings.TypeVariableBindings),
+      List<VCExpr> mapTypeArgs =
+      [
+        ..origIndexTypes.Select(t => AxBuilderPremisses.Type2Term(t, bindings.TypeVariableBindings)),
         AxBuilderPremisses.Type2Term(mapResult, bindings.TypeVariableBindings)
-      };
+      ];
 
       VCExpr
         ante = Gen.And(
